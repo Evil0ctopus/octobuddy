@@ -43,7 +43,7 @@ private const val MODEL_ASSET = "models/octobuddy.glb"
 
 /**
  * SceneView (Filament) pet viewer.
- * Loads the bundled stylized octopus GLB, scales by [PetStage],
+ * Loads the brand-matched stylized octopus GLB, scales by [PetStage],
  * idles with a gentle Y bob + spin, and punches on care actions.
  * Falls back to the brand PNG if the model fails to load.
  */
@@ -67,7 +67,7 @@ fun Pet3DView(
     val centerNode = rememberNode(engine)
 
     val cameraNode = rememberCameraNode(engine) {
-        position = Position(x = 0.0f, y = 0.15f, z = 2.4f)
+        position = Position(x = 0.0f, y = 0.20f, z = 2.5f)
         lookAt(centerNode)
     }
 
