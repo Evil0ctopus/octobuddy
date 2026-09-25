@@ -7,7 +7,7 @@
     <string name="need_hunger">Hunger</string>
     <string name="need_mood">Mood</string>
     <string name="need_energy">Energy</string>
-    <string name="tap_hint">Drag the ocean · tap to splash · care for XP</string>
+    <string name="tap_hint">Drag the ocean · tap to splash · care for XP &amp; dailies</string>
     <string name="rename_pet">Rename pet</string>
     <string name="pet_name_label">Pet name</string>
     <string name="save">Save</string>
@@ -16,7 +16,7 @@
     <string name="xp_to_next">%1$d XP to next · %2$d XP / level</string>
     <string name="xp_maxed">Max level · %1$d XP</string>
     <string name="welcome_title">Meet your OctoBuddy</string>
-    <string name="welcome_body">Name your deep-sea companion. Tap for quips, Feed / Play / Rest to care, earn XP, climb ranks, and evolve — PorkChop energy, Evil0ctopus soul.</string>
+    <string name="welcome_body">Name your deep-sea companion. Hit daily challenges, keep a care streak, unlock cosmetics, and climb ranks — PorkChop energy, Evil0ctopus soul.</string>
     <string name="welcome_start">Let\'s go</string>
     <string name="welcome_name_hint">Buddy name</string>
     <string name="settings">Settings</string>
@@ -24,7 +24,7 @@
     <string name="settings_haptics_on">Vibration on care actions</string>
     <string name="settings_haptics_off">Haptics disabled</string>
     <string name="settings_reset">Reset pet</string>
-    <string name="settings_reset_body">This clears XP, needs, achievements, and name. Your buddy starts over as an Inkling.</string>
+    <string name="settings_reset_body">This clears XP, needs, achievements, cosmetics, streak, and name. Your buddy starts over as an Inkling.</string>
     <string name="settings_reset_confirm">Reset everything</string>
     <string name="settings_close">Close</string>
     <string name="evolve_title">Evolved!</string>
@@ -38,4 +38,12 @@
     <string name="content_desc_pet">OctoBuddy pet</string>
     <string name="content_desc_settings">Open settings</string>
     <string name="content_desc_edit_name">Edit pet name</string>
+    <string name="daily_challenges">Daily challenges</string>
+    <string name="daily_title">Daily challenges</string>
+    <string name="daily_progress_chip">Daily %1$d/%2$d</string>
+    <string name="streak_label">%1$d day streak</string>
+    <string name="streak_detail">Care streak: %1$d day(s) · any care keeps it alive</string>
+    <string name="unlocks">Unlocks</string>
+    <string name="unlocks_title">Unlocks</string>
+    <string name="unlocks_subtitle">Equip frames, glitter, hats &amp; accents you\'ve earned</string>
 </resources>

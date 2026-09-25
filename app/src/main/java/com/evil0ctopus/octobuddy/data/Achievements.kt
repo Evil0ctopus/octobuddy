@@ -1,7 +1,7 @@
 package com.evil0ctopus.octobuddy.data
 
 /**
- * Light PorkChop-style achievement / challenge layer.
+ * PorkChop-style achievement / challenge layer.
  * IDs are stable bit flags persisted as a Long mask.
  */
 enum class Achievement(
@@ -22,6 +22,18 @@ enum class Achievement(
     Level20(10, "Deep Decoder", "Reach level 20"),
     MaxLevel(11, "Dread Octopus", "Hit max level 30"),
     NamedBuddy(12, "Callsign Locked", "Name your OctoBuddy"),
+    // v0.7 expansions
+    Tap100(13, "Boop Admiral", "Tap 100 times"),
+    Feed50(14, "Krill Fleet", "Feed 50 times"),
+    Play50(15, "Jig Legend", "Play 50 times"),
+    Rest25(16, "Deep Sleeper", "Rest 25 times"),
+    Streak3(17, "Tide Habit", "3-day care streak"),
+    Streak7(18, "Weekly Kraken", "7-day care streak"),
+    Streak14(19, "Fortnight Phantom", "14-day care streak"),
+    DailyAll(20, "Daily Sweep", "Complete all daily challenges once"),
+    Level5(21, "Ring Runner Jr", "Reach level 5"),
+    Level15(22, "Hex Admiral", "Reach level 15"),
+    CareDay10(23, "Dedicated Deckhand", "Care on 10 different days"),
     ;
 
     val mask: Long get() = 1L shl bit

@@ -30,8 +30,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.evil0ctopus.octobuddy.ui.theme.Brand
 import kotlinx.coroutines.isActive
+import java.util.Calendar
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -50,6 +52,18 @@ private data class Ripple(
     var ageMs: Float,
     val maxRadius: Float,
     val lifeMs: Float = 900f,
+    val color: Color = Brand.Cyan,
+)
+
+private data class BurstParticle(
+    var x: Float,
+    var y: Float,
+    var vx: Float,
+    var vy: Float,
+    var ageMs: Float,
+    val lifeMs: Float,
+    val radius: Float,
+    val color: Color,
 )
 
 private data class AmbientParticle(
@@ -61,12 +75,16 @@ private data class AmbientParticle(
 )
 
 /**
- * Interactive cyber-ocean background: deep navy gradient, soft caustics,
- * hex/circuit accents, rising bubbles, parallax on drag, ripples on tap.
+ * Interactive cyber-ocean: day/night + mood tint, caustics, hex/circuit,
+ * rising bubbles, parallax, ripples, and care-action particle bursts.
  */
 @Composable
 fun InteractiveCyberOceanBackground(
     modifier: Modifier = Modifier,
+    mood: Float = 80f,
+    energy: Float = 80f,
+    careBurstEpoch: Int = 0,
+    lastAction: PetAction = PetAction.Tap,
     onBackgroundTap: (() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
@@ -76,6 +94,7 @@ fun InteractiveCyberOceanBackground(
     var targetParallaxY by remember { mutableFloatStateOf(0f) }
 
     val ripples = remember { mutableStateListOf<Ripple>() }
+    val bursts = remember { mutableStateListOf<BurstParticle>() }
     var frameTick by remember { mutableFloatStateOf(0f) }
     val bubbles = remember {
         MutableList(28) {
@@ -101,6 +120,10 @@ fun InteractiveCyberOceanBackground(
             )
         }
     }
+
+    val nightFactor = rememberNightFactor()
+    val moodNorm = (mood / 100f).coerceIn(0f, 1f)
+    val energyNorm = (energy / 100f).coerceIn(0f, 1f)
 
     val transition = rememberInfiniteTransition(label = "ocean")
     val causticPhase by transition.animateFloat(
@@ -133,6 +156,53 @@ fun InteractiveCyberOceanBackground(
 
     val maxParallaxPx = with(density) { 28.dp.toPx() }
 
+    // Care-action reactive bursts at pet zone center
+    LaunchedEffect(careBurstEpoch) {
+        if (careBurstEpoch == 0) return@LaunchedEffect
+        val color = when (lastAction) {
+            PetAction.Feed -> Brand.Ok
+            PetAction.Play -> Brand.CopperBright
+            PetAction.Rest -> Brand.CyanDim
+            PetAction.Tap -> Brand.CyanSoft
+        }
+        val count = when (lastAction) {
+            PetAction.Play -> 18
+            PetAction.Feed -> 14
+            PetAction.Rest -> 8
+            PetAction.Tap -> 10
+        }
+        repeat(count) {
+            val angle = Random.nextFloat() * (PI * 2).toFloat()
+            val speed = 0.08f + Random.nextFloat() * 0.22f
+            bursts += BurstParticle(
+                x = 0.5f,
+                y = 0.38f,
+                vx = cos(angle) * speed,
+                vy = sin(angle) * speed - 0.05f,
+                ageMs = 0f,
+                lifeMs = 700f + Random.nextFloat() * 500f,
+                radius = 2.5f + Random.nextFloat() * 4f,
+                color = color,
+            )
+        }
+        while (bursts.size > 64) bursts.removeAt(0)
+        // Extra bubbles on play/feed
+        if (lastAction == PetAction.Play || lastAction == PetAction.Feed) {
+            repeat(6) {
+                bubbles += Bubble(
+                    x = 0.5f + (Random.nextFloat() - 0.5f) * 0.2f,
+                    y = 0.42f,
+                    radius = 4f + Random.nextFloat() * 9f,
+                    speed = 0.05f + Random.nextFloat() * 0.06f,
+                    wobble = 0.025f,
+                    phase = Random.nextFloat() * 6.28f,
+                    alpha = 0.55f,
+                )
+            }
+            while (bubbles.size > 52) bubbles.removeAt(0)
+        }
+    }
+
     LaunchedEffect(Unit) {
         var last = 0L
         while (isActive) {
@@ -144,7 +214,6 @@ fun InteractiveCyberOceanBackground(
                 val dt = ((now - last) / 1_000_000f).coerceIn(0f, 48f)
                 last = now
 
-                // Ease parallax back toward target, then slowly toward rest.
                 parallaxX += (targetParallaxX - parallaxX) * 0.12f
                 parallaxY += (targetParallaxY - parallaxY) * 0.12f
                 targetParallaxX *= 0.96f
@@ -167,12 +236,21 @@ fun InteractiveCyberOceanBackground(
                     r.ageMs += dt
                     if (r.ageMs >= r.lifeMs) ripIter.remove()
                 }
+
+                val burstIter = bursts.listIterator()
+                while (burstIter.hasNext()) {
+                    val p = burstIter.next()
+                    p.ageMs += dt
+                    p.x += p.vx * (dt / 16f) * 0.02f
+                    p.y += p.vy * (dt / 16f) * 0.02f
+                    p.vy += 0.004f * (dt / 16f)
+                    if (p.ageMs >= p.lifeMs) burstIter.remove()
+                }
                 frameTick = (frameTick + dt) % 1_000_000f
             }
         }
     }
 
-    // Reading frameTick invalidates the Canvas each animation frame.
     val _tick = frameTick
 
     Canvas(
@@ -194,9 +272,8 @@ fun InteractiveCyberOceanBackground(
                     ripples += Ripple(
                         origin = offset,
                         ageMs = 0f,
-                        maxRadius = minOf(size.width, size.height).toFloat() * (0.18f + Random.nextFloat() * 0.12f),
+                        maxRadius = min(size.width, size.height).toFloat() * (0.18f + Random.nextFloat() * 0.12f),
                     )
-                    // Spawn a few bubbles at tap
                     repeat(4) {
                         bubbles += Bubble(
                             x = (offset.x / size.width).coerceIn(0f, 1f) +
@@ -218,25 +295,35 @@ fun InteractiveCyberOceanBackground(
         val h = size.height
         val px = parallaxX
         val py = parallaxY
-        // Keep ambient layers alive (read by composition).
         @Suppress("UNUSED_EXPRESSION")
         _tick
 
-        // Deep gradient base
+        // Day / night + mood-tinted base
+        val dayTop = Color(0xFF0E3A4E)
+        val dayMid = Color(0xFF0A2A38)
+        val nightTop = Color(0xFF050A12)
+        val nightMid = Color(0xFF081420)
+        val top = lerpColor(dayTop, nightTop, nightFactor)
+        val mid = lerpColor(dayMid, nightMid, nightFactor)
+        val moodShift = if (moodNorm < 0.4f) {
+            Color(0xFF1A1028) // slightly purple when sad
+        } else if (moodNorm > 0.75f) {
+            Color(0xFF0A3040) // brighter teal when happy
+        } else {
+            Brand.Navy
+        }
+        val bottom = lerpColor(moodShift, Brand.NavyDeep, nightFactor * 0.6f)
+
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(
-                    Brand.NavyDeep,
-                    Brand.Navy,
-                    Color(0xFF0A2A38),
-                    Brand.NavyDeep,
-                ),
+                colors = listOf(top, mid, bottom, Brand.NavyDeep),
             ),
         )
 
-        // Soft caustic bands (far layer — more parallax)
+        // Soft caustic bands
         val farX = px * 0.35f
         val farY = py * 0.35f
+        val causticAlpha = (0.04f + energyNorm * 0.03f) * (1f - nightFactor * 0.35f)
         for (i in 0 until 5) {
             val yBase = h * (0.15f + i * 0.16f) + sin(causticPhase + i) * 18f + farY
             val path = Path().apply {
@@ -252,25 +339,41 @@ fun InteractiveCyberOceanBackground(
             }
             drawPath(
                 path = path,
-                color = Brand.Cyan.copy(alpha = 0.04f + i * 0.01f),
+                color = Brand.Cyan.copy(alpha = causticAlpha + i * 0.008f),
                 style = Stroke(width = 18f - i),
             )
         }
 
-        // Hex lattice (mid layer)
+        // Night stars
+        if (nightFactor > 0.25f) {
+            val starAlpha = ((nightFactor - 0.25f) / 0.75f).coerceIn(0f, 1f) * 0.7f
+            for (i in 0 until 22) {
+                val sx = ((i * 97) % 100) / 100f * w
+                val sy = ((i * 53) % 55) / 100f * h
+                val twinkle = (sin(causticPhase * 2f + i) + 1f) * 0.5f
+                drawCircle(
+                    color = Brand.Foam.copy(alpha = starAlpha * (0.25f + twinkle * 0.55f)),
+                    radius = 1.2f + (i % 3) * 0.6f,
+                    center = Offset(sx, sy),
+                )
+            }
+        }
+
+        // Hex lattice
         val midX = px * 0.65f
         val midY = py * 0.65f
         val hexR = 46f
         val hexH = (hexR * 1.732f)
         var row = 0
         var y = -hexH + midY
+        val hexAlphaMul = 0.045f * circuitPulse * (0.7f + moodNorm * 0.4f)
         while (y < h + hexH) {
             var x = -hexR + midX + if (row % 2 == 0) 0f else hexR * 0.75f
             while (x < w + hexR) {
                 drawHex(
                     center = Offset(x, y),
                     radius = hexR,
-                    color = Brand.Cyan.copy(alpha = 0.045f * circuitPulse),
+                    color = Brand.Cyan.copy(alpha = hexAlphaMul),
                     stroke = 1.2f,
                 )
                 x += hexR * 1.5f
@@ -279,23 +382,21 @@ fun InteractiveCyberOceanBackground(
             row++
         }
 
-        // Large soft brand hex behind pet zone
         rotate(degrees = hexSpin * 0.02f, pivot = Offset(w * 0.5f + midX * 0.3f, h * 0.38f + midY * 0.3f)) {
             drawHex(
                 center = Offset(w * 0.5f + midX * 0.3f, h * 0.38f + midY * 0.3f),
-                radius = w.coerceAtMost(h) * 0.42f,
+                radius = min(w, h) * 0.42f,
                 color = Brand.Cyan.copy(alpha = 0.12f * circuitPulse),
                 stroke = 2.5f,
             )
             drawHex(
                 center = Offset(w * 0.5f + midX * 0.3f, h * 0.38f + midY * 0.3f),
-                radius = w.coerceAtMost(h) * 0.36f,
+                radius = min(w, h) * 0.36f,
                 color = Brand.Cyan.copy(alpha = 0.06f),
                 stroke = 1.2f,
             )
         }
 
-        // Circuit nodes + traces (near-ish)
         val nearX = px
         val nearY = py
         nodes.forEachIndexed { i, n ->
@@ -328,7 +429,6 @@ fun InteractiveCyberOceanBackground(
             }
         }
 
-        // Rising bubbles
         bubbles.forEach { b ->
             val bx = b.x * w + nearX * 0.25f
             val by = b.y * h + nearY * 0.15f
@@ -350,13 +450,23 @@ fun InteractiveCyberOceanBackground(
             )
         }
 
-        // Tap ripples
+        // Care bursts
+        bursts.forEach { p ->
+            val t = (p.ageMs / p.lifeMs).coerceIn(0f, 1f)
+            val alpha = (1f - t) * 0.85f
+            drawCircle(
+                color = p.color.copy(alpha = alpha),
+                radius = p.radius * (1f - t * 0.4f),
+                center = Offset(p.x * w, p.y * h),
+            )
+        }
+
         ripples.forEach { r ->
             val t = (r.ageMs / r.lifeMs).coerceIn(0f, 1f)
             val radius = r.maxRadius * t
             val alpha = (1f - t) * 0.55f
             drawCircle(
-                color = Brand.Cyan.copy(alpha = alpha),
+                color = r.color.copy(alpha = alpha),
                 radius = radius,
                 center = r.origin,
                 style = Stroke(width = 3f * (1f - t * 0.7f)),
@@ -369,18 +479,41 @@ fun InteractiveCyberOceanBackground(
             )
         }
 
-        // Vignette
         drawRect(
             brush = Brush.radialGradient(
                 colors = listOf(
                     Color.Transparent,
-                    Brand.NavyDeep.copy(alpha = 0.55f),
+                    Brand.NavyDeep.copy(alpha = 0.45f + nightFactor * 0.2f),
                 ),
                 center = Offset(w * 0.5f, h * 0.4f),
-                radius = w.coerceAtLeast(h) * 0.85f,
+                radius = maxOf(w, h) * 0.85f,
             ),
         )
     }
+}
+
+@Composable
+private fun rememberNightFactor(): Float {
+    // Smooth night curve from local hour: day ~0, dusk/dawn ramp, night ~1
+    val cal = Calendar.getInstance()
+    val hour = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
+    return when {
+        hour < 5f -> 1f
+        hour < 7f -> 1f - (hour - 5f) / 2f
+        hour < 18f -> 0f
+        hour < 20.5f -> (hour - 18f) / 2.5f
+        else -> 1f
+    }.coerceIn(0f, 1f)
+}
+
+private fun lerpColor(a: Color, b: Color, t: Float): Color {
+    val x = t.coerceIn(0f, 1f)
+    return Color(
+        red = a.red + (b.red - a.red) * x,
+        green = a.green + (b.green - a.green) * x,
+        blue = a.blue + (b.blue - a.blue) * x,
+        alpha = a.alpha + (b.alpha - a.alpha) * x,
+    )
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHex(
