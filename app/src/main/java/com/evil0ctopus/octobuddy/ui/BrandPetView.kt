@@ -1,7 +1,6 @@
 package com.evil0ctopus.octobuddy.ui
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -19,8 +18,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -48,9 +50,10 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Brand-faithful 2.5D pet using the Evil0ctopus mark PNG.
- * Distinct Feed / Play / Rest reactions, blink cycles, mood posture,
- * and equippable frame / glitter / glow / hats / accents.
+ * Brand-faithful pet driven by Blender-rendered frame loops of the exact
+ * Evil0ctopus mark PNG (pixels warped — not a different 3D octopus).
+ * Idle loops continuously; care actions play a one-shot clip then return to idle.
+ * Blink / mood tint / cosmetics remain Compose overlays on top.
  */
 @Composable
 fun BrandPetView(
@@ -69,7 +72,8 @@ fun BrandPetView(
     val needsAvg = (hunger + mood + energy) / 3f
     val sadFactor = ((50f - needsAvg) / 50f).coerceIn(0f, 1f)
     val happyFactor = ((needsAvg - 60f) / 40f).coerceIn(0f, 1f)
-    val bobAmp = 10f - sadFactor * 5f + happyFactor * 3f
+    // Blender idle already breathes/bobs; keep a tiny residual for hat sync only
+    val bobAmp = 2f - sadFactor * 1f + happyFactor * 1f
     val bobMs = ((2200 / stage.idleSpeed) * (1f + sadFactor * 0.45f)).toInt().coerceIn(1400, 3800)
 
     val bob by transition.animateFloat(
@@ -127,14 +131,21 @@ fun BrandPetView(
         label = "glitter",
     )
 
-    val punch = remember { Animatable(1f) }
-    val spin = remember { Animatable(0f) }
-    val squashY = remember { Animatable(1f) }
-    val offsetY = remember { Animatable(0f) }
+    val clips = rememberPetAnimClips()
+    val idleFrames = clips[PetAnimClip.Idle].orEmpty()
+    var activeClip by remember { mutableIntStateOf(PetAnimClip.Idle.ordinal) }
+    var frameIndex by remember { mutableIntStateOf(0) }
+
+    val frameMs = PetAnimFrames.frameDurationMs(
+        mood = mood,
+        energy = energy,
+        stageIdleSpeed = stage.idleSpeed,
+    )
+
     val evolveFlash = remember { Animatable(0f) }
     val blink = remember { Animatable(0f) }
 
-    // Blink cycle — quick lid close every few seconds
+    // Blink lids (overlay — Blender idle is open-eyed)
     LaunchedEffect(Unit) {
         while (true) {
             delay(2800L + (Math.random() * 3200).toLong())
@@ -149,52 +160,31 @@ fun BrandPetView(
         }
     }
 
-    // Distinct care reactions
+    // Care action → Blender one-shot clip, then idle
     LaunchedEffect(actionEpoch) {
         if (actionEpoch == 0) return@LaunchedEffect
-        punch.snapTo(1f)
-        spin.snapTo(0f)
-        squashY.snapTo(1f)
-        offsetY.snapTo(0f)
-        when (lastAction) {
-            PetAction.Feed -> {
-                // Happy nom: squash + bounce up
-                squashY.animateTo(0.88f, tween(90, easing = FastOutSlowInEasing))
-                punch.animateTo(1.16f, tween(100, easing = FastOutSlowInEasing))
-                offsetY.animateTo(-14f, tween(120, easing = FastOutSlowInEasing))
-                squashY.animateTo(1.06f, tween(120))
-                punch.animateTo(1f, tween(200))
-                offsetY.animateTo(0f, tween(180))
-                squashY.animateTo(1f, tween(140))
-                spin.animateTo(12f, tween(100))
-                spin.animateTo(-8f, tween(120))
-                spin.animateTo(0f, tween(100))
-            }
-            PetAction.Play -> {
-                // Full spin jig
-                punch.animateTo(1.20f, tween(100, easing = FastOutSlowInEasing))
-                spin.animateTo(360f, tween(620, easing = FastOutSlowInEasing))
-                punch.animateTo(1f, tween(220))
-                spin.snapTo(0f)
-                offsetY.animateTo(-18f, tween(80))
-                offsetY.animateTo(0f, tween(160))
-            }
-            PetAction.Rest -> {
-                // Slow settle / sleepy droop
-                offsetY.animateTo(16f, tween(280, easing = FastOutSlowInEasing))
-                squashY.animateTo(0.92f, tween(280))
-                punch.animateTo(0.96f, tween(280))
-                delay(220)
-                offsetY.animateTo(0f, tween(360))
-                squashY.animateTo(1f, tween(360))
-                punch.animateTo(1f, tween(360))
-            }
-            PetAction.Tap -> {
-                punch.animateTo(1.10f, tween(90, easing = FastOutSlowInEasing))
-                spin.animateTo(22f, tween(140))
-                punch.animateTo(1f, tween(180))
-                spin.animateTo(0f, tween(160))
-            }
+        val clip = lastAction.toAnimClip()
+        val frames = clips[clip].orEmpty()
+        if (frames.isEmpty()) {
+            activeClip = PetAnimClip.Idle.ordinal
+            return@LaunchedEffect
+        }
+        activeClip = clip.ordinal
+        for (i in frames.indices) {
+            frameIndex = i
+            delay(frameMs)
+        }
+        activeClip = PetAnimClip.Idle.ordinal
+        frameIndex = 0
+    }
+
+    // Idle loop
+    LaunchedEffect(activeClip, idleFrames.size, frameMs) {
+        if (activeClip != PetAnimClip.Idle.ordinal) return@LaunchedEffect
+        if (idleFrames.isEmpty()) return@LaunchedEffect
+        while (true) {
+            delay(frameMs)
+            frameIndex = (frameIndex + 1) % idleFrames.size
         }
     }
 
@@ -231,6 +221,12 @@ fun BrandPetView(
         else -> null
     }
 
+    val clipEnum = PetAnimClip.entries.getOrElse(activeClip) { PetAnimClip.Idle }
+    val currentFrames = clips[clipEnum].orEmpty().ifEmpty { idleFrames }
+    val currentBitmap: ImageBitmap? = currentFrames.getOrNull(
+        frameIndex.coerceIn(0, (currentFrames.size - 1).coerceAtLeast(0)),
+    )
+
     val frame = equipped.frame()
     val effect = equipped.effect()
     val head = equipped.head()
@@ -254,8 +250,8 @@ fun BrandPetView(
             modifier = Modifier
                 .fillMaxSize(0.98f)
                 .graphicsLayer {
-                    scaleX = breathe * punch.value
-                    scaleY = breathe * punch.value * squashY.value
+                    scaleX = breathe
+                    scaleY = breathe
                     alpha = 0.9f
                 }
                 .drawWithContent {
@@ -287,8 +283,8 @@ fun BrandPetView(
             modifier = Modifier
                 .fillMaxSize(0.92f)
                 .graphicsLayer {
-                    scaleX = breathe * punch.value
-                    scaleY = breathe * punch.value * squashY.value
+                    scaleX = breathe
+                    scaleY = breathe
                     alpha = 0.35f + gleam * 0.25f + evolveFlash.value * 0.45f + glowBoost
                 }
                 .drawWithContent {
@@ -308,69 +304,86 @@ fun BrandPetView(
                 },
         )
 
-        Image(
-            painter = painterResource(R.drawable.octobuddy_pet),
-            contentDescription = stringResource(R.string.content_desc_pet),
-            contentScale = ContentScale.Fit,
-            colorFilter = colorFilter,
-            modifier = Modifier
-                .fillMaxSize(0.92f)
-                .graphicsLayer {
-                    translationY = bob + offsetY.value + postureDroop
-                    rotationZ = tilt + spin.value
-                    scaleX = stageScale * breathe * punch.value
-                    scaleY = stageScale * breathe * punch.value * squashY.value
-                    alpha = 0.92f + gleam * 0.08f
-                }
-                .drawWithContent {
-                    drawContent()
-                    val gleamAlpha = gleam * 0.22f + evolveFlash.value * 0.35f
-                    // Eye gleam
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Brand.CyanSoft.copy(alpha = gleamAlpha * (1f - blink.value)),
-                                Color.Transparent,
-                            ),
-                            startY = size.height * 0.18f,
-                            endY = size.height * 0.48f,
-                        ),
-                    )
-                    // Blink lids
-                    if (blink.value > 0.01f) {
-                        val lidH = size.height * 0.14f * blink.value
+        if (currentBitmap != null) {
+            Image(
+                bitmap = currentBitmap,
+                contentDescription = stringResource(R.string.content_desc_pet),
+                contentScale = ContentScale.Fit,
+                colorFilter = colorFilter,
+                modifier = Modifier
+                    .fillMaxSize(0.92f)
+                    .graphicsLayer {
+                        translationY = bob + postureDroop
+                        rotationZ = tilt
+                        scaleX = stageScale
+                        scaleY = stageScale
+                        alpha = 0.92f + gleam * 0.08f
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        val gleamAlpha = gleam * 0.22f + evolveFlash.value * 0.35f
+                        // Eye gleam
                         drawRect(
-                            color = Brand.NavyDeep.copy(alpha = 0.55f * blink.value),
-                            topLeft = Offset(size.width * 0.22f, size.height * 0.28f),
-                            size = androidx.compose.ui.geometry.Size(size.width * 0.56f, lidH),
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Brand.CyanSoft.copy(alpha = gleamAlpha * (1f - blink.value)),
+                                    Color.Transparent,
+                                ),
+                                startY = size.height * 0.18f,
+                                endY = size.height * 0.48f,
+                            ),
                         )
-                    }
-                    if (evolveFlash.value > 0.01f) {
-                        drawCircle(
-                            color = Brand.Cyan.copy(alpha = evolveFlash.value * 0.45f),
-                            radius = min(size.width, size.height) * 0.55f * (0.6f + evolveFlash.value * 0.4f),
-                            center = Offset(size.width / 2f, size.height / 2f),
-                        )
-                    }
-                    // Packet glitter
-                    if (effect == Cosmetic.EffectGlitter || effect == Cosmetic.EffectStreakFire) {
-                        val n = 10
-                        for (i in 0 until n) {
-                            val a = glitterPhase + i * (PI * 2 / n).toFloat()
-                            val rr = min(size.width, size.height) * (0.28f + (i % 3) * 0.06f)
-                            val cx = size.width / 2f + cos(a) * rr
-                            val cy = size.height / 2f + sin(a * 1.3f) * rr * 0.85f
-                            val spark = (sin(a * 3f) + 1f) * 0.5f
-                            val col = if (effect == Cosmetic.EffectStreakFire) Brand.CopperBright else Brand.CyanSoft
-                            drawCircle(
-                                color = col.copy(alpha = 0.25f + spark * 0.55f),
-                                radius = 1.6f + spark * 2.2f,
-                                center = Offset(cx, cy),
+                        // Blink lids
+                        if (blink.value > 0.01f) {
+                            val lidH = size.height * 0.14f * blink.value
+                            drawRect(
+                                color = Brand.NavyDeep.copy(alpha = 0.55f * blink.value),
+                                topLeft = Offset(size.width * 0.22f, size.height * 0.28f),
+                                size = androidx.compose.ui.geometry.Size(size.width * 0.56f, lidH),
                             )
                         }
-                    }
-                },
-        )
+                        if (evolveFlash.value > 0.01f) {
+                            drawCircle(
+                                color = Brand.Cyan.copy(alpha = evolveFlash.value * 0.45f),
+                                radius = min(size.width, size.height) * 0.55f * (0.6f + evolveFlash.value * 0.4f),
+                                center = Offset(size.width / 2f, size.height / 2f),
+                            )
+                        }
+                        // Packet glitter
+                        if (effect == Cosmetic.EffectGlitter || effect == Cosmetic.EffectStreakFire) {
+                            val n = 10
+                            for (i in 0 until n) {
+                                val a = glitterPhase + i * (PI * 2 / n).toFloat()
+                                val rr = min(size.width, size.height) * (0.28f + (i % 3) * 0.06f)
+                                val cx = size.width / 2f + cos(a) * rr
+                                val cy = size.height / 2f + sin(a * 1.3f) * rr * 0.85f
+                                val spark = (sin(a * 3f) + 1f) * 0.5f
+                                val col = if (effect == Cosmetic.EffectStreakFire) Brand.CopperBright else Brand.CyanSoft
+                                drawCircle(
+                                    color = col.copy(alpha = 0.25f + spark * 0.55f),
+                                    radius = 1.6f + spark * 2.2f,
+                                    center = Offset(cx, cy),
+                                )
+                            }
+                        }
+                    },
+            )
+        } else {
+            Image(
+                painter = painterResource(R.drawable.octobuddy_pet),
+                contentDescription = stringResource(R.string.content_desc_pet),
+                contentScale = ContentScale.Fit,
+                colorFilter = colorFilter,
+                modifier = Modifier
+                    .fillMaxSize(0.92f)
+                    .graphicsLayer {
+                        translationY = bob + postureDroop
+                        rotationZ = tilt
+                        scaleX = stageScale
+                        scaleY = stageScale
+                    },
+            )
+        }
 
         // Head cosmetics
         when (head) {
@@ -379,8 +392,8 @@ fun BrandPetView(
                     .align(Alignment.TopCenter)
                     .offset(y = (-4).dp)
                     .graphicsLayer {
-                        translationY = bob * 0.4f + offsetY.value * 0.4f
-                        rotationZ = tilt * 0.5f + spin.value * 0.15f
+                        translationY = bob * 0.4f
+                        rotationZ = tilt * 0.5f
                     },
             )
             Cosmetic.HeadAdmiral -> AdmiralCrest(
@@ -388,7 +401,7 @@ fun BrandPetView(
                     .align(Alignment.TopCenter)
                     .offset(y = (-2).dp)
                     .graphicsLayer {
-                        translationY = bob * 0.4f + offsetY.value * 0.4f
+                        translationY = bob * 0.4f
                         alpha = 0.85f + gleam * 0.15f
                     },
             )
@@ -401,7 +414,7 @@ fun BrandPetView(
                     .align(Alignment.TopCenter)
                     .size(width = 72.dp, height = 18.dp)
                     .graphicsLayer {
-                        translationY = bob * 0.4f - 6f + offsetY.value * 0.3f
+                        translationY = bob * 0.4f - 6f
                         alpha = 0.55f + gleam * 0.35f
                     }
                     .drawWithContent {

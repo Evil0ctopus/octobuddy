@@ -4,11 +4,11 @@ Free Android pet companion starring the **real Evil0ctopus brand octopus** — a
 
 > **Free forever for core play.** No ads, no Play Billing. A short hook in `PetViewModel` is reserved for future premium cosmetics — not wired up.
 
-## Features (v0.7)
+## Features (v0.8)
 
 ### Brand-true pet + interactive world
-- **Hero pet = brand PNG** (`drawable-nodpi/octobuddy_pet.png`) — idle bob / breathe / tilt, blink + eye gleam, mood posture, stage scale
-- **Distinct care reactions** — Feed squash-bounce, Play full spin jig, Rest sleepy droop, Tap punch
+- **Hero pet = Blender-animated brand PNG** — exact Evil0ctopus mark warped in Blender (textured plane + armature/lattice); PNG frame loops in `assets/pet_anim/`
+- **Distinct care clips** — Idle (32) · Feed (16) · Play (20) · Rest (18) · Tap (12) @ 24fps; mood tints / speed-modulates idle; cosmetics stay as overlays
 - **Interactive cyber-ocean** — day/night tint from local clock, mood-tinted water, soft caustics, hex lattice + circuit nodes; drag for parallax, tap for ripples; **particle bursts on care**
 
 ### Daily challenges + care streak
@@ -45,9 +45,9 @@ git clone https://github.com/Evil0ctopus/octobuddy.git
 
 Open in Android Studio → Run ▶ `app`.
 
-Application id: `com.evil0ctopus.octobuddy` · **0.7.0** (versionCode 8)
+Application id: `com.evil0ctopus.octobuddy` · **0.8.0** (versionCode 9)
 
-### Verify (v0.7)
+### Verify (v0.8)
 
 1. Welcome sheet → name buddy; pet is the **Evil0ctopus mark**.
 2. Calendar icon → daily challenges; care advances progress; streak chip updates.
@@ -63,7 +63,8 @@ UX/game shell patterns inspired by [PorkChop](https://github.com/0ct0sec/M5PORKC
 ## Art
 
 - Brand mark: [`brand/`](brand/) · in-app `octobuddy_pet.png`
-- Optional GLB retained under `assets/models/` for experiments; **v0.7 does not use SceneView**
+- **Pet animation** authored in **Blender** from that brand PNG (not a different octopus mesh). Pipeline: [`tools/brand_pet_anim/`](tools/brand_pet_anim/) → `app/src/main/assets/pet_anim/{idle,feed,play,rest,tap}/frame_XX.png`
+- Optional GLB retained under `assets/models/` for experiments; **v0.8 still does not use SceneView**
 
 ## License
 
