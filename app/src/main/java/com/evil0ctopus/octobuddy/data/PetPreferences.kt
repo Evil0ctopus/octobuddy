@@ -16,6 +16,7 @@ private val Context.petDataStore: DataStore<Preferences> by preferencesDataStore
 data class PetState(
     val hunger: Double = 80.0,
     val mood: Double = 80.0,
+    val energy: Double = 80.0,
     val lastUpdatedMillis: Long = System.currentTimeMillis(),
     val petName: String = "OctoBuddy",
 )
@@ -23,6 +24,7 @@ data class PetState(
 class PetPreferences(private val context: Context) {
     private val hungerKey = doublePreferencesKey("hunger")
     private val moodKey = doublePreferencesKey("mood")
+    private val energyKey = doublePreferencesKey("energy")
     private val lastUpdatedKey = longPreferencesKey("last_updated_millis")
     private val petNameKey = stringPreferencesKey("pet_name")
 
@@ -30,6 +32,7 @@ class PetPreferences(private val context: Context) {
         PetState(
             hunger = prefs[hungerKey] ?: 80.0,
             mood = prefs[moodKey] ?: 80.0,
+            energy = prefs[energyKey] ?: 80.0,
             lastUpdatedMillis = prefs[lastUpdatedKey] ?: System.currentTimeMillis(),
             petName = prefs[petNameKey] ?: "OctoBuddy",
         )
@@ -39,6 +42,7 @@ class PetPreferences(private val context: Context) {
         context.petDataStore.edit { prefs ->
             prefs[hungerKey] = state.hunger.coerceIn(0.0, 100.0)
             prefs[moodKey] = state.mood.coerceIn(0.0, 100.0)
+            prefs[energyKey] = state.energy.coerceIn(0.0, 100.0)
             prefs[lastUpdatedKey] = state.lastUpdatedMillis
             prefs[petNameKey] = state.petName
         }

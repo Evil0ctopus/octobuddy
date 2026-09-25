@@ -135,8 +135,9 @@ fun PetScreen(viewModel: PetViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                NeedBar(label = "Hunger", value = state.hunger / 100f)
-                NeedBar(label = "Mood", value = state.mood / 100f)
+                NeedBar(label = stringResource(R.string.need_hunger), value = state.hunger / 100f)
+                NeedBar(label = stringResource(R.string.need_mood), value = state.mood / 100f)
+                NeedBar(label = stringResource(R.string.need_energy), value = state.energy / 100f)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -163,6 +164,17 @@ fun PetScreen(viewModel: PetViewModel) {
                     ) {
                         Text(stringResource(R.string.play))
                     }
+                }
+                Button(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.rest()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                ) {
+                    Text(stringResource(R.string.rest))
                 }
                 Text(
                     text = stringResource(R.string.tap_hint),

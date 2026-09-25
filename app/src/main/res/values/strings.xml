@@ -3,7 +3,11 @@
     <string name="app_name">OctoBuddy</string>
     <string name="feed">Feed</string>
     <string name="play">Play</string>
-    <string name="tap_hint">Tap your buddy · feed when hungry · play to cheer up</string>
+    <string name="rest">Rest</string>
+    <string name="need_hunger">Hunger</string>
+    <string name="need_mood">Mood</string>
+    <string name="need_energy">Energy</string>
+    <string name="tap_hint">Tap your buddy · feed when hungry · play to cheer up · rest when tired</string>
     <string name="rename_pet">Rename pet</string>
     <string name="pet_name_label">Pet name</string>
     <string name="save">Save</string>
