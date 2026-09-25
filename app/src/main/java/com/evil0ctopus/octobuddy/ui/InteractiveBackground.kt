@@ -194,7 +194,7 @@ fun InteractiveCyberOceanBackground(
                     ripples += Ripple(
                         origin = offset,
                         ageMs = 0f,
-                        maxRadius = size.minDimension * (0.18f + Random.nextFloat() * 0.12f),
+                        maxRadius = minOf(size.width, size.height).toFloat() * (0.18f + Random.nextFloat() * 0.12f),
                     )
                     // Spawn a few bubbles at tap
                     repeat(4) {
