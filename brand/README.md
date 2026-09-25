@@ -10,3 +10,8 @@ Octopus artwork is **Evil0ctopus** (Evil0ctopus) brand mark.
 | `github-avatar.jpg` | GitHub avatar crop |
 
 The Android drawable `app/src/main/res/drawable-nodpi/octobuddy_pet.png` is derived from `brand-mark.jpg`.
+
+## 3D pet
+
+The in-app animated pet is a **SceneView** GLB at `app/src/main/assets/models/octobuddy.glb` (original stylized octopus, CC0 — see that folder's README). The flat PNG (`octobuddy_pet.png`) remains as a load-failure fallback only.
+

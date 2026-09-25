@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.evil0ctopus.octobuddy.data.PetPreferences
+import com.evil0ctopus.octobuddy.data.PetProgress
+import com.evil0ctopus.octobuddy.data.PetStage
 import com.evil0ctopus.octobuddy.data.PetState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -18,8 +20,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Local-only pet needs. Future premium cosmetics / boosts can hook in here
- * (Play Billing not implemented in v1 — keep the app free for now).
+ * Local-only pet needs + XP / evolution.
+ * Future premium cosmetics / boosts can hook in here
+ * (Play Billing not implemented — keep the app free for now).
  */
 class PetViewModel(
     private val preferences: PetPreferences,
@@ -46,42 +49,44 @@ class PetViewModel(
             val current = _uiState.value.toPetState(now)
             val decayed = applyDecay(current, now)
             preferences.save(decayed)
-            _uiState.value = PetUiState.from(decayed)
-        }
-    }
-
-    fun tapPet() {
-        mutate { state ->
-            state.copy(mood = min(100.0, state.mood + 8.0))
-        }
-    }
-
-    fun feed() {
-        mutate { state ->
-            state.copy(
-                hunger = min(100.0, state.hunger + 18.0),
-                mood = min(100.0, state.mood + 4.0),
+            val prev = _uiState.value
+            _uiState.value = PetUiState.from(decayed).copy(
+                actionEpoch = prev.actionEpoch,
+                lastAction = prev.lastAction,
             )
         }
     }
 
-    fun play() {
-        mutate { state ->
-            state.copy(
-                mood = (state.mood + 12.0).coerceIn(0.0, 100.0),
-                hunger = (state.hunger - 4.0).coerceIn(0.0, 100.0),
-                energy = (state.energy - 6.0).coerceIn(0.0, 100.0),
-            )
-        }
+    fun tapPet() = careAction(PetAction.Tap) { state ->
+        state.copy(
+            mood = min(100.0, state.mood + 8.0),
+            xp = state.xp + PetProgress.XP_TAP,
+        )
     }
 
-    fun rest() {
-        mutate { state ->
-            state.copy(
-                energy = (state.energy + 20.0).coerceIn(0.0, 100.0),
-                mood = (state.mood + 3.0).coerceIn(0.0, 100.0),
-            )
-        }
+    fun feed() = careAction(PetAction.Feed) { state ->
+        state.copy(
+            hunger = min(100.0, state.hunger + 18.0),
+            mood = min(100.0, state.mood + 4.0),
+            xp = state.xp + PetProgress.XP_FEED,
+        )
+    }
+
+    fun play() = careAction(PetAction.Play) { state ->
+        state.copy(
+            mood = (state.mood + 12.0).coerceIn(0.0, 100.0),
+            hunger = (state.hunger - 4.0).coerceIn(0.0, 100.0),
+            energy = (state.energy - 6.0).coerceIn(0.0, 100.0),
+            xp = state.xp + PetProgress.XP_PLAY,
+        )
+    }
+
+    fun rest() = careAction(PetAction.Rest) { state ->
+        state.copy(
+            energy = (state.energy + 20.0).coerceIn(0.0, 100.0),
+            mood = (state.mood + 3.0).coerceIn(0.0, 100.0),
+            xp = state.xp + PetProgress.XP_REST,
+        )
     }
 
     /**
@@ -92,15 +97,28 @@ class PetViewModel(
         val trimmed = rawName.trim()
         if (trimmed.isEmpty()) return
         val clamped = trimmed.take(MAX_PET_NAME_LENGTH)
-        mutate { state -> state.copy(petName = clamped) }
-    }
-
-    private fun mutate(block: (PetState) -> PetState) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
-            val next = block(_uiState.value.toPetState(now)).copy(lastUpdatedMillis = now)
+            val prev = _uiState.value
+            val next = prev.toPetState(now).copy(petName = clamped, lastUpdatedMillis = now)
             preferences.save(next)
-            _uiState.value = PetUiState.from(next)
+            _uiState.value = PetUiState.from(next).copy(
+                actionEpoch = prev.actionEpoch,
+                lastAction = prev.lastAction,
+            )
+        }
+    }
+
+    private fun careAction(action: PetAction, block: (PetState) -> PetState) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val prev = _uiState.value
+            val nextState = block(prev.toPetState(now)).copy(lastUpdatedMillis = now)
+            preferences.save(nextState)
+            _uiState.value = PetUiState.from(nextState).copy(
+                actionEpoch = prev.actionEpoch + 1,
+                lastAction = action,
+            )
         }
     }
 
@@ -110,9 +128,13 @@ class PetViewModel(
             while (isActive) {
                 delay(30_000L)
                 val now = System.currentTimeMillis()
-                val decayed = applyDecay(_uiState.value.toPetState(now), now)
+                val prev = _uiState.value
+                val decayed = applyDecay(prev.toPetState(now), now)
                 preferences.save(decayed)
-                _uiState.value = PetUiState.from(decayed)
+                _uiState.value = PetUiState.from(decayed).copy(
+                    actionEpoch = prev.actionEpoch,
+                    lastAction = prev.lastAction,
+                )
             }
         }
     }
@@ -140,12 +162,24 @@ class PetViewModel(
     }
 }
 
+enum class PetAction {
+    Tap, Feed, Play, Rest,
+}
+
 data class PetUiState(
     val hunger: Float = 80f,
     val mood: Float = 80f,
     val energy: Float = 80f,
     val petName: String = "OctoBuddy",
     val statusText: String = "OctoBuddy is happy",
+    val xp: Long = 0L,
+    val level: Int = 1,
+    val stage: PetStage = PetStage.Hatchling,
+    val xpProgress: Float = 0f,
+    val xpToNext: Long = PetProgress.XP_PER_LEVEL,
+    /** Bumps on Feed / Play / Rest / Tap so the 3D view can punch/spin. */
+    val actionEpoch: Int = 0,
+    val lastAction: PetAction = PetAction.Tap,
 ) {
     fun toPetState(now: Long = System.currentTimeMillis()) = PetState(
         hunger = hunger.toDouble(),
@@ -153,6 +187,7 @@ data class PetUiState(
         energy = energy.toDouble(),
         lastUpdatedMillis = now,
         petName = petName,
+        xp = xp,
     )
 
     companion object {
@@ -166,17 +201,29 @@ data class PetUiState(
                 mood = m,
                 energy = e,
                 petName = name,
-                statusText = statusFor(name, h, m, e),
+                statusText = statusFor(name, h, m, e, state.stage),
+                xp = state.xp,
+                level = state.level,
+                stage = state.stage,
+                xpProgress = PetProgress.xpProgress(state.xp),
+                xpToNext = PetProgress.xpToNext(state.xp),
             )
         }
 
-        /** Priority: hunger first, then energy (tired), then mood. */
-        private fun statusFor(name: String, hunger: Float, mood: Float, energy: Float): String = when {
+        /** Priority: hunger first, then energy (tired), then mood. Stage note when happy. */
+        private fun statusFor(
+            name: String,
+            hunger: Float,
+            mood: Float,
+            energy: Float,
+            stage: PetStage,
+        ): String = when {
             hunger < 25f -> "$name is hungry"
             energy < 25f -> "$name is tired"
             mood < 25f -> "$name is sleepy"
             hunger < 50f && mood < 50f -> "$name could use a snack and a cuddle"
-            hunger >= 70f && mood >= 70f && energy >= 70f -> "$name is happy"
+            hunger >= 70f && mood >= 70f && energy >= 70f ->
+                "$name is a happy ${stage.displayName.lowercase()}"
             mood >= 60f -> "$name is content"
             else -> "$name is resting"
         }
