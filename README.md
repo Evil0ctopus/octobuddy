@@ -32,6 +32,18 @@ Free Android pet companion starring the **real Evil0ctopus brand octopus** — a
 - First-run welcome · rename · Settings (haptics + reset with confirm)
 - Always-dark Material 3 theme from brand **navy / cyan / copper**
 
+## Install on your phone (one tap)
+
+Sideload the release APK — no Android Studio required.
+
+1. On your **Android phone**, open:  
+   **[Download OctoBuddy 0.8.1 APK](https://github.com/Evil0ctopus/octobuddy/releases/download/v0.8.1/octobuddy-0.8.1-release.apk)**  
+   (or the [release page](https://github.com/Evil0ctopus/octobuddy/releases/tag/v0.8.1))
+2. Tap **Download**, then open the file when prompted.
+3. If Android asks, allow **Install unknown apps** for your browser/Files, then tap **Install**.
+
+Requires Android 8.0+ (API 26). The APK is **release-signed** for sideload (not Play Store). Play upload later needs the same upload keystore kept privately on the build machine.
+
 ## Requirements
 
 - [Android Studio](https://developer.android.com/studio) (Ladybug / Koala or newer)
@@ -45,7 +57,7 @@ git clone https://github.com/Evil0ctopus/octobuddy.git
 
 Open in Android Studio → Run ▶ `app`.
 
-Application id: `com.evil0ctopus.octobuddy` · **0.8.0** (versionCode 9)
+Application id: `com.evil0ctopus.octobuddy` · **0.8.1** (versionCode 10)
 
 ### Verify (v0.8)
 

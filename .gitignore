@@ -41,3 +41,6 @@ output.json
 # Keystore — never commit
 *.jks
 *.keystore
+
+# Local release signing (never commit)
+keystore.properties
