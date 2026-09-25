@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OctoBuddy</string>
+    <string name="feed">Feed</string>
+    <string name="tap_hint">Tap your buddy · feed when hungry</string>
+</resources>

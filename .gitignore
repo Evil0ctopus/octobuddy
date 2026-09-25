@@ -1,0 +1,43 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+.navigation/
+captures/
+output.json
+*.log
+*.hprof
+
+# Android Studio / IntelliJ
+*.ipr
+*.iws
+.idea/workspace.xml
+.idea/libraries/
+.idea/caches/
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Kotlin
+.kotlin/
+
+# App module
+/app/build/
+/app/release/
+
+# Keystore — never commit
+*.jks
+*.keystore
