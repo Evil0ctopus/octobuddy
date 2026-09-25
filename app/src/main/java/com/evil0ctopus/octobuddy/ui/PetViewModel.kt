@@ -65,6 +65,26 @@ class PetViewModel(
         }
     }
 
+    fun play() {
+        mutate { state ->
+            state.copy(
+                mood = (state.mood + 12.0).coerceIn(0.0, 100.0),
+                hunger = (state.hunger - 4.0).coerceIn(0.0, 100.0),
+            )
+        }
+    }
+
+    /**
+     * Renames the pet. Trims whitespace, clamps to 1–24 chars.
+     * Blank (after trim) is rejected and the previous name is kept.
+     */
+    fun renamePet(rawName: String) {
+        val trimmed = rawName.trim()
+        if (trimmed.isEmpty()) return
+        val clamped = trimmed.take(MAX_PET_NAME_LENGTH)
+        mutate { state -> state.copy(petName = clamped) }
+    }
+
     private fun mutate(block: (PetState) -> PetState) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
@@ -102,37 +122,45 @@ class PetViewModel(
             lastUpdatedMillis = now,
         )
     }
+
+    companion object {
+        const val MAX_PET_NAME_LENGTH = 24
+    }
 }
 
 data class PetUiState(
     val hunger: Float = 80f,
     val mood: Float = 80f,
+    val petName: String = "OctoBuddy",
     val statusText: String = "OctoBuddy is happy",
 ) {
     fun toPetState(now: Long = System.currentTimeMillis()) = PetState(
         hunger = hunger.toDouble(),
         mood = mood.toDouble(),
         lastUpdatedMillis = now,
+        petName = petName,
     )
 
     companion object {
         fun from(state: PetState): PetUiState {
             val h = state.hunger.toFloat()
             val m = state.mood.toFloat()
+            val name = state.petName.ifBlank { "OctoBuddy" }
             return PetUiState(
                 hunger = h,
                 mood = m,
-                statusText = statusFor(h, m),
+                petName = name,
+                statusText = statusFor(name, h, m),
             )
         }
 
-        private fun statusFor(hunger: Float, mood: Float): String = when {
-            hunger < 25f -> "OctoBuddy is hungry"
-            mood < 25f -> "OctoBuddy is sleepy"
-            hunger < 50f && mood < 50f -> "OctoBuddy could use a snack and a cuddle"
-            hunger >= 70f && mood >= 70f -> "OctoBuddy is happy"
-            mood >= 60f -> "OctoBuddy is content"
-            else -> "OctoBuddy is resting"
+        private fun statusFor(name: String, hunger: Float, mood: Float): String = when {
+            hunger < 25f -> "$name is hungry"
+            mood < 25f -> "$name is sleepy"
+            hunger < 50f && mood < 50f -> "$name could use a snack and a cuddle"
+            hunger >= 70f && mood >= 70f -> "$name is happy"
+            mood >= 60f -> "$name is content"
+            else -> "$name is resting"
         }
     }
 }

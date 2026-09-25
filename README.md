@@ -2,16 +2,18 @@
 
 Free Android pet companion featuring **Josh Lorson’s** (Evil0ctopus) brand octopus.
 
-Tap your buddy to boost mood, feed when hungry, and watch a gentle idle bob while Hunger and Mood drift over time (local-only, DataStore).
+Tap your buddy to boost mood, feed when hungry, play to cheer them up, and watch a gentle idle bob while Hunger and Mood drift over time (local-only, DataStore). Rename your pet so status copy feels personal.
 
 > **Free now · premium later.** The app ships without ads or Play Billing. A short hook in code (`PetViewModel`) is reserved for future premium cosmetics / boosts — not implemented in this scaffold.
 
-## Features (v0.1 scaffold)
+## Features (v0.2)
 
 - Home / pet screen with brand octopus art
 - Hunger + Mood (0–100), decay while away or on a 30s tick
-- Tap pet → mood boost · **Feed** button → hunger (and a little mood)
-- Friendly status copy (“OctoBuddy is happy / hungry / sleepy …”)
+- Tap pet → mood boost · **Feed** → hunger (and a little mood) · **Play** → mood up, slight hunger cost
+- Rename your pet (persisted via DataStore); status copy uses the name
+- Light haptic on tap; stronger haptic on Feed / Play
+- Friendly status copy (“{name} is happy / hungry / sleepy …”)
 - Compose idle motion (bob + soft scale pulse)
 - Material 3 · Kotlin · Jetpack Compose
 
