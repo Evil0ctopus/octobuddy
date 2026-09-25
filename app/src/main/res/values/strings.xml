@@ -7,9 +7,12 @@
     <string name="need_hunger">Hunger</string>
     <string name="need_mood">Mood</string>
     <string name="need_energy">Energy</string>
-    <string name="tap_hint">Tap your buddy · feed when hungry · play to cheer up · rest when tired</string>
+    <string name="tap_hint">Tap your buddy · feed when hungry · play to cheer up · rest when tired · earn XP to evolve</string>
     <string name="rename_pet">Rename pet</string>
     <string name="pet_name_label">Pet name</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="level_stage_line">Level %1$d · %2$s</string>
+    <string name="xp_to_next">%1$d XP to next · %2$d XP / level</string>
+    <string name="xp_maxed">Max level · %1$d XP</string>
 </resources>

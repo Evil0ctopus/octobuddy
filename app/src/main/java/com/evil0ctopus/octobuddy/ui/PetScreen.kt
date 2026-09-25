@@ -1,14 +1,6 @@
 package com.evil0ctopus.octobuddy.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
@@ -39,21 +30,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.evil0ctopus.octobuddy.R
+import com.evil0ctopus.octobuddy.data.PetProgress
 
 @Composable
 fun PetScreen(viewModel: PetViewModel) {
@@ -114,21 +101,32 @@ fun PetScreen(viewModel: PetViewModel) {
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = state.statusText,
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                LevelRow(
+                    level = state.level,
+                    stageName = state.stage.displayName,
+                    xpProgress = state.xpProgress,
+                    xpToNext = state.xpToNext,
+                    xp = state.xp,
+                )
             }
 
-            IdlePet(
+            Pet3DView(
+                stage = state.stage,
+                actionEpoch = state.actionEpoch,
+                lastAction = state.lastAction,
                 onTap = {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     viewModel.tapPet()
                 },
-                modifier = Modifier.size(240.dp),
+                modifier = Modifier.size(260.dp),
             )
 
             Column(
@@ -189,6 +187,44 @@ fun PetScreen(viewModel: PetViewModel) {
 }
 
 @Composable
+private fun LevelRow(
+    level: Int,
+    stageName: String,
+    xpProgress: Float,
+    xpToNext: Long,
+    xp: Long,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.level_stage_line, level, stageName),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        LinearProgressIndicator(
+            progress = { xpProgress.coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .height(8.dp),
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        val caption = if (level >= PetProgress.MAX_LEVEL) {
+            stringResource(R.string.xp_maxed, xp.toInt())
+        } else {
+            stringResource(R.string.xp_to_next, xpToNext.toInt(), PetProgress.XP_PER_LEVEL.toInt())
+        }
+        Text(
+            text = caption,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun RenamePetDialog(
     currentName: String,
     onDismiss: () -> Unit,
@@ -221,47 +257,6 @@ private fun RenamePetDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
-    )
-}
-
-@Composable
-private fun IdlePet(
-    onTap: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val transition = rememberInfiniteTransition(label = "octo_idle")
-    val bob by transition.animateFloat(
-        initialValue = -8f,
-        targetValue = 8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "bob",
-    )
-    val pulse by transition.animateFloat(
-        initialValue = 0.96f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
-    )
-
-    Image(
-        painter = painterResource(R.drawable.octobuddy_pet),
-        contentDescription = "OctoBuddy pet",
-        contentScale = ContentScale.Fit,
-        modifier = modifier
-            .graphicsLayer { translationY = bob }
-            .scale(pulse)
-            .clip(CircleShape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onTap,
-            ),
     )
 }
 

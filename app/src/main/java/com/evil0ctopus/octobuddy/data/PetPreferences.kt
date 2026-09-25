@@ -19,7 +19,12 @@ data class PetState(
     val energy: Double = 80.0,
     val lastUpdatedMillis: Long = System.currentTimeMillis(),
     val petName: String = "OctoBuddy",
-)
+    /** Lifetime care XP. Missing key → 0. Level is derived, not stored. */
+    val xp: Long = 0L,
+) {
+    val level: Int get() = PetProgress.levelForXp(xp)
+    val stage: PetStage get() = PetProgress.stageForXp(xp)
+}
 
 class PetPreferences(private val context: Context) {
     private val hungerKey = doublePreferencesKey("hunger")
@@ -27,6 +32,7 @@ class PetPreferences(private val context: Context) {
     private val energyKey = doublePreferencesKey("energy")
     private val lastUpdatedKey = longPreferencesKey("last_updated_millis")
     private val petNameKey = stringPreferencesKey("pet_name")
+    private val xpKey = longPreferencesKey("xp")
 
     val petState: Flow<PetState> = context.petDataStore.data.map { prefs ->
         PetState(
@@ -35,6 +41,7 @@ class PetPreferences(private val context: Context) {
             energy = prefs[energyKey] ?: 80.0,
             lastUpdatedMillis = prefs[lastUpdatedKey] ?: System.currentTimeMillis(),
             petName = prefs[petNameKey] ?: "OctoBuddy",
+            xp = prefs[xpKey] ?: 0L,
         )
     }
 
@@ -45,6 +52,7 @@ class PetPreferences(private val context: Context) {
             prefs[energyKey] = state.energy.coerceIn(0.0, 100.0)
             prefs[lastUpdatedKey] = state.lastUpdatedMillis
             prefs[petNameKey] = state.petName
+            prefs[xpKey] = state.xp.coerceAtLeast(0L)
         }
     }
 }
