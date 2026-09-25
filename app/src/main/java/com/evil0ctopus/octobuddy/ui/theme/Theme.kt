@@ -1,50 +1,40 @@
 package com.evil0ctopus.octobuddy.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
-private val OceanDeep = Color(0xFF0B1D2A)
-private val OceanMid = Color(0xFF123447)
-private val Coral = Color(0xFFFF6B6B)
-private val Teal = Color(0xFF2EC4B6)
-private val Foam = Color(0xFFE8F4F8)
-private val Sand = Color(0xFFFFF6E8)
-
-private val DarkColors = darkColorScheme(
-    primary = Teal,
-    onPrimary = OceanDeep,
-    secondary = Coral,
-    onSecondary = OceanDeep,
-    background = OceanDeep,
-    onBackground = Foam,
-    surface = OceanMid,
-    onSurface = Foam,
-    onSurfaceVariant = Foam.copy(alpha = 0.75f),
-)
-
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF0D7377),
-    onPrimary = Color.White,
-    secondary = Coral,
-    onSecondary = Color.White,
-    background = Sand,
-    onBackground = OceanDeep,
-    surface = Color.White,
-    onSurface = OceanDeep,
-    onSurfaceVariant = OceanDeep.copy(alpha = 0.65f),
+/**
+ * Always-dark cyber-ocean theme matching the Evil0ctopus brand mark
+ * (navy / cyan / copper). Light mode is intentionally not offered —
+ * the companion lives in the deep.
+ */
+private val BrandDark = darkColorScheme(
+    primary = Brand.Cyan,
+    onPrimary = Brand.NavyDeep,
+    primaryContainer = Brand.CyanDim,
+    onPrimaryContainer = Brand.Foam,
+    secondary = Brand.Copper,
+    onSecondary = Brand.NavyDeep,
+    secondaryContainer = Brand.Copper.copy(alpha = 0.25f),
+    onSecondaryContainer = Brand.CopperBright,
+    tertiary = Brand.CyanSoft,
+    onTertiary = Brand.NavyDeep,
+    background = Brand.NavyDeep,
+    onBackground = Brand.Foam,
+    surface = Brand.Navy,
+    onSurface = Brand.Foam,
+    surfaceVariant = Brand.NavyCard,
+    onSurfaceVariant = Brand.FoamDim,
+    outline = Brand.CyanDim,
+    error = Brand.Danger,
+    onError = Brand.NavyDeep,
 )
 
 @Composable
-fun OctoBuddyTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun OctoBuddyTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = BrandDark,
         typography = Typography,
         content = content,
     )

@@ -1,16 +1,16 @@
 package com.evil0ctopus.octobuddy.data
 
 /**
- * Level / evolution helpers for OctoBuddy.
+ * Level / evolution / rank helpers (PorkChop-style progression shell).
  *
- * Curve (documented in README):
+ * Curve:
  *   level = 1 + floor(xp / XP_PER_LEVEL), capped at [MAX_LEVEL]
- *   Hatchling = levels 1–4, Juvenile = 5–9, Adult = 10+
+ *   Hatchling = 1–4 · Juvenile = 5–9 · Adult = 10+
  */
 enum class PetStage(val displayName: String, val modelScale: Float, val idleSpeed: Float) {
-    Hatchling("Hatchling", modelScale = 0.55f, idleSpeed = 0.75f),
-    Juvenile("Juvenile", modelScale = 0.80f, idleSpeed = 1.00f),
-    Adult("Adult", modelScale = 1.00f, idleSpeed = 1.25f),
+    Hatchling("Hatchling", modelScale = 0.72f, idleSpeed = 0.80f),
+    Juvenile("Juvenile", modelScale = 0.88f, idleSpeed = 1.00f),
+    Adult("Adult", modelScale = 1.00f, idleSpeed = 1.18f),
 }
 
 object PetProgress {
@@ -36,7 +36,19 @@ object PetProgress {
 
     fun stageForXp(xp: Long): PetStage = stageForLevel(levelForXp(xp))
 
-    /** XP already earned within the current level band (0 until [XP_PER_LEVEL]). */
+    /** PorkChop-style rank title by level (cyber-octopus voice). */
+    fun rankTitle(level: Int): String = when {
+        level >= 30 -> "Dread Octopus"
+        level >= 25 -> "Abyss Ace"
+        level >= 20 -> "Circuit Kraken"
+        level >= 15 -> "Hex Admiral"
+        level >= 10 -> "Cyan Captain"
+        level >= 7 -> "Tide Raider"
+        level >= 5 -> "Ring Runner"
+        level >= 3 -> "Ink Scout"
+        else -> "Inkling"
+    }
+
     fun xpIntoLevel(xp: Long): Long {
         val level = levelForXp(xp)
         if (level >= MAX_LEVEL) return XP_PER_LEVEL
@@ -44,13 +56,11 @@ object PetProgress {
         return (xp.coerceAtLeast(0L) - floorXp).coerceIn(0L, XP_PER_LEVEL)
     }
 
-    /** Progress 0f–1f toward the next level (1f when maxed). */
     fun xpProgress(xp: Long): Float {
         if (levelForXp(xp) >= MAX_LEVEL) return 1f
         return xpIntoLevel(xp).toFloat() / XP_PER_LEVEL.toFloat()
     }
 
-    /** XP still needed to reach the next level (0 when maxed). */
     fun xpToNext(xp: Long): Long {
         if (levelForXp(xp) >= MAX_LEVEL) return 0L
         return XP_PER_LEVEL - xpIntoLevel(xp)
