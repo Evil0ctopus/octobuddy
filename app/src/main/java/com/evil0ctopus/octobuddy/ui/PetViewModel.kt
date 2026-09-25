@@ -70,6 +70,16 @@ class PetViewModel(
             state.copy(
                 mood = (state.mood + 12.0).coerceIn(0.0, 100.0),
                 hunger = (state.hunger - 4.0).coerceIn(0.0, 100.0),
+                energy = (state.energy - 6.0).coerceIn(0.0, 100.0),
+            )
+        }
+    }
+
+    fun rest() {
+        mutate { state ->
+            state.copy(
+                energy = (state.energy + 20.0).coerceIn(0.0, 100.0),
+                mood = (state.mood + 3.0).coerceIn(0.0, 100.0),
             )
         }
     }
@@ -108,16 +118,18 @@ class PetViewModel(
     }
 
     /**
-     * Hunger drains a bit faster than mood.
-     * Roughly: ~1 hunger / 3 min, ~1 mood / 5 min while away.
+     * Hunger drains a bit faster than mood; energy sits between them.
+     * Roughly: ~1 hunger / 3 min, ~1 energy / 4 min, ~1 mood / 5 min while away.
      */
     private fun applyDecay(state: PetState, now: Long): PetState {
         val elapsedMs = max(0L, now - state.lastUpdatedMillis)
         val minutes = elapsedMs / 60_000.0
         val hungerLoss = minutes / 3.0
+        val energyLoss = minutes / 4.0
         val moodLoss = minutes / 5.0
         return state.copy(
             hunger = (state.hunger - hungerLoss).coerceIn(0.0, 100.0),
+            energy = (state.energy - energyLoss).coerceIn(0.0, 100.0),
             mood = (state.mood - moodLoss).coerceIn(0.0, 100.0),
             lastUpdatedMillis = now,
         )
@@ -131,12 +143,14 @@ class PetViewModel(
 data class PetUiState(
     val hunger: Float = 80f,
     val mood: Float = 80f,
+    val energy: Float = 80f,
     val petName: String = "OctoBuddy",
     val statusText: String = "OctoBuddy is happy",
 ) {
     fun toPetState(now: Long = System.currentTimeMillis()) = PetState(
         hunger = hunger.toDouble(),
         mood = mood.toDouble(),
+        energy = energy.toDouble(),
         lastUpdatedMillis = now,
         petName = petName,
     )
@@ -145,20 +159,24 @@ data class PetUiState(
         fun from(state: PetState): PetUiState {
             val h = state.hunger.toFloat()
             val m = state.mood.toFloat()
+            val e = state.energy.toFloat()
             val name = state.petName.ifBlank { "OctoBuddy" }
             return PetUiState(
                 hunger = h,
                 mood = m,
+                energy = e,
                 petName = name,
-                statusText = statusFor(name, h, m),
+                statusText = statusFor(name, h, m, e),
             )
         }
 
-        private fun statusFor(name: String, hunger: Float, mood: Float): String = when {
+        /** Priority: hunger first, then energy (tired), then mood. */
+        private fun statusFor(name: String, hunger: Float, mood: Float, energy: Float): String = when {
             hunger < 25f -> "$name is hungry"
+            energy < 25f -> "$name is tired"
             mood < 25f -> "$name is sleepy"
             hunger < 50f && mood < 50f -> "$name could use a snack and a cuddle"
-            hunger >= 70f && mood >= 70f -> "$name is happy"
+            hunger >= 70f && mood >= 70f && energy >= 70f -> "$name is happy"
             mood >= 60f -> "$name is content"
             else -> "$name is resting"
         }
