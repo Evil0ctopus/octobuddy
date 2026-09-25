@@ -1,6 +1,6 @@
 # OctoBuddy
 
-Free Android pet companion featuring **Josh Lorson’s** (Evil0ctopus) brand octopus.
+Free Android pet companion featuring **Evil0ctopus** (Evil0ctopus) brand octopus.
 
 Tap your buddy to boost mood, feed when hungry, play to cheer them up, and watch a gentle idle bob while Hunger and Mood drift over time (local-only, DataStore). Rename your pet so status copy feels personal.
 
@@ -37,8 +37,8 @@ Application id: `com.evil0ctopus.octobuddy`
 
 ## Art attribution
 
-Pet art is Josh Lorson’s brand octopus. Source files live under [`brand/`](brand/) (and a spare under [`assets/`](assets/)). The in-app drawable is `app/src/main/res/drawable-nodpi/octobuddy_pet.png`.
+Pet art is Evil0ctopus brand octopus. Source files live under [`brand/`](brand/) (and a spare under [`assets/`](assets/)). The in-app drawable is `app/src/main/res/drawable-nodpi/octobuddy_pet.png`.
 
 ## License
 
-[MIT](LICENSE) © 2026 Joshua Lorson
+[MIT](LICENSE) © 2026 Evil0ctopus

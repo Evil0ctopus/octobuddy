@@ -1,6 +1,6 @@
 # Brand assets
 
-Octopus artwork is **Josh Lorson’s** (Evil0ctopus) brand mark.
+Octopus artwork is **Evil0ctopus** (Evil0ctopus) brand mark.
 
 | File | Notes |
 |------|--------|
