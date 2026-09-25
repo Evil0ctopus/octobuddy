@@ -1,0 +1,28 @@
+{
+  "source": "octobuddy_pet.png",
+  "size": 512,
+  "engine": "BLENDER_EEVEE_NEXT",
+  "clips": {
+    "idle": {
+      "frames": 32,
+      "fps": 24
+    },
+    "feed": {
+      "frames": 16,
+      "fps": 24
+    },
+    "play": {
+      "frames": 20,
+      "fps": 24
+    },
+    "rest": {
+      "frames": 18,
+      "fps": 24
+    },
+    "tap": {
+      "frames": 12,
+      "fps": 24
+    }
+  },
+  "technique": "brand PNG textured plane + armature/lattice deform (pixels warped, not re-meshed)"
+}
