@@ -12,8 +12,8 @@ android {
         applicationId = "com.evil0ctopus.octobuddy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 6
+        versionName = "0.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -59,8 +59,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.sceneview)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

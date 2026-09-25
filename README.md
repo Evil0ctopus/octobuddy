@@ -1,57 +1,61 @@
 # OctoBuddy
 
-Free Android pet companion featuring the **Evil0ctopus** brand octopus — now with **XP, evolution stages, and an animated 3D pet**.
+Free Android pet companion starring the **real Evil0ctopus brand octopus** — a PorkChop-inspired companion shell (speech bubbles, glossy XP, ranks, achievements, level-up fanfare) on a living **cyber-ocean** background.
 
-Tap your buddy to boost mood, feed when hungry, play to cheer them up, rest when tired, and watch a **SceneView (Filament) 3D octopus** idle-bob while Hunger, Mood, and Energy drift over time (local-only, DataStore). Care actions earn XP so your hatchling grows into a juvenile, then an adult. Rename your pet so status copy feels personal.
+> **Free forever for core play.** No ads, no Play Billing. A short hook in `PetViewModel` is reserved for future premium cosmetics — not wired up.
 
-> **Free now · premium later.** The app ships without ads or Play Billing. A short hook in code (`PetViewModel`) is reserved for future premium cosmetics / boosts — not implemented in this scaffold.
+## Features (v0.6)
 
-## Features (v0.4)
+### Brand-true pet + interactive world
+- **Hero pet = brand PNG** (`drawable-nodpi/octobuddy_pet.png`) — idle bob / breathe / tilt, cyan eye gleam, stage scale, Adult copper crown, punch & spin on care
+- **Interactive cyber-ocean** — navy gradient, soft caustics, hex lattice + circuit nodes; drag for parallax, tap for ripples & bubbles
 
-- **Animated 3D pet** via SceneView / Filament (bundled `octobuddy.glb`); PNG fallback if load fails
-- **XP + levels + evolution stages**
-  - Tap +1 XP · Feed +5 · Play +8 · Rest +4
-  - `level = 1 + floor(xp / 40)`, capped at **30**
-  - **Hatchling** levels 1–4 · **Juvenile** 5–9 · **Adult** 10+
-  - Stage changes visible scale + idle speed on the 3D model
-- Hunger + Mood + Energy (0–100), decay while away or on a 30s tick
-- Feed / Play / Rest care actions with a short 3D punch / spin
-- Rename your pet (persisted via DataStore); status copy uses the name + stage when happy
-- Light haptic on tap; stronger haptic on Feed / Play / Rest
-- Material 3 · Kotlin · Jetpack Compose · minSdk 26
+### PorkChop-style game shell
+- **Speech bubbles** with Evil0ctopus cyber-pirate quips (tap / feed / play / rest / ambient / level-up / evolve)
+- **Glossy XP bar** + **rank titles** by level (Inkling → … → Dread Octopus)
+- **Avatar stages** Hatchling → Juvenile → Adult (scale + Adult accents)
+- **Level-up fanfare** and **evolve celebration** (overlay + haptic + quip)
+- **Achievements** light layer (first care actions, tap/feed/play milestones, evolve & level goals)
+- **Persistent profile** — name, XP, needs, haptics, achievement mask, care counts (DataStore)
+
+### Care loop
+- Hunger · Mood · Energy (0–100) with Feed / Play / Rest / tap; decay while away or on a 30s tick
+- XP: Tap +1 · Feed +5 · Play +8 · Rest +4 · `level = 1 + floor(xp / 40)` capped at 30
+- First-run welcome · rename · Settings (haptics + reset with confirm)
+- Always-dark Material 3 theme from brand **navy / cyan / copper**
 
 ## Requirements
 
-- [Android Studio](https://developer.android.com/studio) (Ladybug / Koala or newer recommended)
-- JDK 17
-- Android device or emulator with **API 26+** (minSdk 26; target/compileSdk 35)
-- OpenGL ES 3.0 (required for SceneView / Filament)
+- [Android Studio](https://developer.android.com/studio) (Ladybug / Koala or newer)
+- JDK 17 · device/emulator **API 26+** (target/compileSdk 35)
 
 ## Open & run
 
-1. Clone this repo:
-   ```bash
-   git clone https://github.com/Evil0ctopus/octobuddy.git
-   ```
-2. Open the **octobuddy** folder in Android Studio (**File → Open**).
-3. Let Gradle sync (Android Studio downloads the wrapper/deps on first open).
-4. Pick an emulator or USB device → **Run ▶** `app`.
+```bash
+git clone https://github.com/Evil0ctopus/octobuddy.git
+```
 
-Application id: `com.evil0ctopus.octobuddy` · versionName **0.4.0** (versionCode 4)
+Open in Android Studio → Run ▶ `app`.
 
-### Verify on device (v0.4 checklist)
+Application id: `com.evil0ctopus.octobuddy` · **0.6.0** (versionCode 6)
 
-1. Fresh install → pet should appear as a **small (Hatchling) animated 3D octopus** (gentle bob + spin), not a flat static PNG.
-2. Status row shows **Level 1 · Hatchling** and an XP progress bar.
-3. Tap the pet a few times → mood + XP tick up; 3D model does a short punch/spin.
-4. Feed / Play / Rest → needs update, XP gains (+5 / +8 / +4), stronger haptic, action burst on the model.
-5. Keep caring until **160 XP** (level 5) → stage becomes **Juvenile** and the model scales up; at **360 XP** (level 10) → **Adult**.
-6. Force-stop and reopen → XP / level / stage / name persist.
+### Verify (v0.6)
 
-## Art attribution
+1. Welcome sheet → name buddy; pet is clearly the **Evil0ctopus mark** (not a wrong 3D mesh).
+2. Speech bubble appears on tap; ambient quips every ~14s.
+3. Drag ocean / tap void for parallax & ripples.
+4. Glossy XP bar + rank line update on care; level-up overlay at XP thresholds; evolve at Juvenile/Adult.
+5. Trophy icon → achievements list; Settings → haptics / reset.
+6. Force-stop → profile persists.
 
-- **2D brand art:** Evil0ctopus mark under [`brand/`](brand/) (spare under [`assets/`](assets/)). In-app fallback drawable: `app/src/main/res/drawable-nodpi/octobuddy_pet.png`.
-- **3D pet:** original stylized GLB (CC0) — see [`app/src/main/assets/models/README.md`](app/src/main/assets/models/README.md).
+## Design notes
+
+UX/game shell patterns inspired by [PorkChop](https://github.com/0ct0sec/M5PORKCHOP) / [Porkchop-cyd-Port](https://github.com/Xombi3/Porkchop-cyd-Port) and Josh’s [Pocket-Pirate-CYD](https://github.com/Evil0ctopus/Pocket-Pirate-CYD) (speech bubbles, ranks, XP bar, fanfare) — **companion systems only**, not WiFi/attack tooling.
+
+## Art
+
+- Brand mark: [`brand/`](brand/) · in-app `octobuddy_pet.png`
+- Optional GLB retained under `assets/models/` for experiments; **v0.6 does not use SceneView**
 
 ## License
 

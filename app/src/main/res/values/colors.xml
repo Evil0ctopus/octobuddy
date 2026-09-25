@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ocean_deep">#FF0B1D2A</color>
-    <color name="ocean_mid">#FF123447</color>
-    <color name="octopus_coral">#FFFF6B6B</color>
-    <color name="octopus_teal">#FF2EC4B6</color>
+    <color name="ocean_deep">#FF070F18</color>
+    <color name="ocean_mid">#FF0B1D2A</color>
+    <color name="brand_cyan">#FF00E5FF</color>
+    <color name="brand_copper">#FFC47A3A</color>
     <color name="foam">#FFE8F4F8</color>
 </resources>
