@@ -5,6 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.evil0ctopus.octobuddy.data.Achievement
+import com.evil0ctopus.octobuddy.data.CareActionType
+import com.evil0ctopus.octobuddy.data.Cosmetic
+import com.evil0ctopus.octobuddy.data.DailyChallengeEngine
+import com.evil0ctopus.octobuddy.data.DailyState
+import com.evil0ctopus.octobuddy.data.EquippedCosmetics
 import com.evil0ctopus.octobuddy.data.OctoQuips
 import com.evil0ctopus.octobuddy.data.PetPreferences
 import com.evil0ctopus.octobuddy.data.PetProgress
@@ -22,8 +27,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Local-only pet needs + XP / evolution + PorkChop-style profile shell
- * (quips, ranks, achievements). Play Billing not implemented — stay free.
+ * Local-only pet needs + XP / evolution + daily challenges + cosmetics.
+ * Play Billing not implemented — stay free.
  */
 class PetViewModel(
     private val preferences: PetPreferences,
@@ -40,7 +45,10 @@ class PetViewModel(
         viewModelScope.launch {
             val stored = preferences.petState.first()
             val decayed = applyDecay(stored, System.currentTimeMillis())
-            val withAchievements = evaluateAchievements(decayed)
+            val withDaily = decayed.withDaily(
+                DailyChallengeEngine.ensureToday(decayed.dailyState()),
+            )
+            val withAchievements = evaluateAchievements(withDaily)
             preferences.save(withAchievements)
             _uiState.value = PetUiState.from(withAchievements)
             startTicker()
@@ -52,13 +60,16 @@ class PetViewModel(
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val current = _uiState.value.toPetState(now)
-            val decayed = evaluateAchievements(applyDecay(current, now))
+            val withDaily = current.withDaily(
+                DailyChallengeEngine.ensureToday(current.dailyState(), DailyChallengeEngine.todayKey(now)),
+            )
+            val decayed = evaluateAchievements(applyDecay(withDaily, now))
             preferences.save(decayed)
             _uiState.value = PetUiState.from(decayed).withTransient(_uiState.value)
         }
     }
 
-    fun tapPet() = careAction(PetAction.Tap, OctoQuips.forTap()) { state ->
+    fun tapPet() = careAction(PetAction.Tap, CareActionType.Tap, PetProgress.XP_TAP, OctoQuips.forTap()) { state ->
         state.copy(
             mood = min(100.0, state.mood + 8.0),
             xp = state.xp + PetProgress.XP_TAP,
@@ -66,7 +77,7 @@ class PetViewModel(
         )
     }
 
-    fun feed() = careAction(PetAction.Feed, OctoQuips.forFeed()) { state ->
+    fun feed() = careAction(PetAction.Feed, CareActionType.Feed, PetProgress.XP_FEED, OctoQuips.forFeed()) { state ->
         state.copy(
             hunger = min(100.0, state.hunger + 18.0),
             mood = min(100.0, state.mood + 4.0),
@@ -75,7 +86,7 @@ class PetViewModel(
         )
     }
 
-    fun play() = careAction(PetAction.Play, OctoQuips.forPlay()) { state ->
+    fun play() = careAction(PetAction.Play, CareActionType.Play, PetProgress.XP_PLAY, OctoQuips.forPlay()) { state ->
         state.copy(
             mood = (state.mood + 12.0).coerceIn(0.0, 100.0),
             hunger = (state.hunger - 4.0).coerceIn(0.0, 100.0),
@@ -85,7 +96,7 @@ class PetViewModel(
         )
     }
 
-    fun rest() = careAction(PetAction.Rest, OctoQuips.forRest()) { state ->
+    fun rest() = careAction(PetAction.Rest, CareActionType.Rest, PetProgress.XP_REST, OctoQuips.forRest()) { state ->
         state.copy(
             energy = (state.energy + 20.0).coerceIn(0.0, 100.0),
             mood = (state.mood + 3.0).coerceIn(0.0, 100.0),
@@ -139,8 +150,23 @@ class PetViewModel(
         }
     }
 
+    fun equipCosmetic(cosmetic: Cosmetic) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val prev = _uiState.value
+            val state = prev.toPetState(now)
+            if (!cosmetic.isUnlocked(state.achievementsMask, state.level, state.careStreak)) return@launch
+            val equipped = state.equipped().withSlot(cosmetic.slot, cosmetic)
+            val next = state.withEquipped(equipped).copy(lastUpdatedMillis = now)
+            preferences.save(next)
+            _uiState.value = PetUiState.from(next).withTransient(prev)
+        }
+    }
+
     fun openSettings() {
-        _uiState.value = _uiState.value.copy(showSettings = true, showAchievements = false)
+        _uiState.value = _uiState.value.copy(
+            showSettings = true, showAchievements = false, showUnlocks = false, showDaily = false,
+        )
     }
 
     fun closeSettings() {
@@ -148,11 +174,33 @@ class PetViewModel(
     }
 
     fun openAchievements() {
-        _uiState.value = _uiState.value.copy(showAchievements = true, showSettings = false)
+        _uiState.value = _uiState.value.copy(
+            showAchievements = true, showSettings = false, showUnlocks = false, showDaily = false,
+        )
     }
 
     fun closeAchievements() {
         _uiState.value = _uiState.value.copy(showAchievements = false)
+    }
+
+    fun openUnlocks() {
+        _uiState.value = _uiState.value.copy(
+            showUnlocks = true, showSettings = false, showAchievements = false, showDaily = false,
+        )
+    }
+
+    fun closeUnlocks() {
+        _uiState.value = _uiState.value.copy(showUnlocks = false)
+    }
+
+    fun openDaily() {
+        _uiState.value = _uiState.value.copy(
+            showDaily = true, showSettings = false, showAchievements = false, showUnlocks = false,
+        )
+    }
+
+    fun closeDaily() {
+        _uiState.value = _uiState.value.copy(showDaily = false)
     }
 
     fun dismissEvolve() {
@@ -171,20 +219,35 @@ class PetViewModel(
         viewModelScope.launch {
             preferences.resetPet()
             val fresh = preferences.petState.first()
-            _uiState.value = PetUiState.from(fresh)
+            val withDaily = fresh.withDaily(DailyChallengeEngine.ensureToday(fresh.dailyState()))
+            preferences.save(withDaily)
+            _uiState.value = PetUiState.from(withDaily)
         }
     }
 
     private fun careAction(
         action: PetAction,
+        careType: CareActionType,
+        xpGain: Long,
         quip: String,
         block: (PetState) -> PetState,
     ) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val prev = _uiState.value
+            val prevStreak = prev.careStreak
+            val prevDailyComplete = prev.daily.allComplete
             val rawNext = block(prev.toPetState(now)).copy(lastUpdatedMillis = now)
-            val nextState = evaluateAchievements(rawNext)
+            val dailyNext = DailyChallengeEngine.applyCare(
+                state = DailyChallengeEngine.ensureToday(rawNext.dailyState(), DailyChallengeEngine.todayKey(now)),
+                action = careType,
+                deltaXp = xpGain,
+                hunger = rawNext.hunger,
+                mood = rawNext.mood,
+                nowMillis = now,
+            )
+            val withDaily = rawNext.withDaily(dailyNext)
+            val nextState = evaluateAchievements(withDaily)
             preferences.save(nextState)
 
             val leveled = nextState.level > prev.level
@@ -193,10 +256,14 @@ class PetViewModel(
                 Achievement.isUnlocked(nextState.achievementsMask, a) &&
                     !Achievement.isUnlocked(prev.achievementsMask, a)
             }
+            val streakGrew = nextState.careStreak > prevStreak
+            val dailyJustDone = nextState.dailyState().allComplete && !prevDailyComplete
 
             val speech = when {
                 evolved -> OctoQuips.forEvolve()
                 leveled -> OctoQuips.forLevelUp()
+                dailyJustDone -> OctoQuips.forDailyComplete()
+                streakGrew && nextState.careStreak >= 2 -> OctoQuips.forStreak()
                 else -> quip
             }
             scheduleQuipClear()
@@ -211,7 +278,10 @@ class PetViewModel(
                 speechText = speech,
                 showSettings = prev.showSettings,
                 showAchievements = prev.showAchievements,
+                showUnlocks = prev.showUnlocks,
+                showDaily = prev.showDaily,
                 newAchievement = newAchievements.firstOrNull() ?: prev.newAchievement,
+                careBurstEpoch = prev.careBurstEpoch + 1,
             )
         }
     }
@@ -238,8 +308,7 @@ class PetViewModel(
                 if (!s.onboardingComplete) continue
                 if (s.speechText != null) continue
                 if (s.evolvedToStage != null || s.leveledTo != null) continue
-                val needQuip = OctoQuips.forNeeds(s.hunger, s.energy, s.mood)
-                showQuip(needQuip ?: OctoQuips.randomIdle())
+                showQuip(OctoQuips.ambient(s.hunger, s.energy, s.mood))
             }
         }
     }
@@ -251,7 +320,10 @@ class PetViewModel(
                 delay(30_000L)
                 val now = System.currentTimeMillis()
                 val prev = _uiState.value
-                val decayed = evaluateAchievements(applyDecay(prev.toPetState(now), now))
+                val withDaily = prev.toPetState(now).withDaily(
+                    DailyChallengeEngine.ensureToday(prev.toPetState(now).dailyState(), DailyChallengeEngine.todayKey(now)),
+                )
+                val decayed = evaluateAchievements(applyDecay(withDaily, now))
                 preferences.save(decayed)
                 _uiState.value = PetUiState.from(decayed).withTransient(prev)
             }
@@ -281,16 +353,29 @@ class PetViewModel(
         if (state.tapCount >= 25) unlock(Achievement.Tap25)
         if (state.feedCount >= 10) unlock(Achievement.Feed10)
         if (state.playCount >= 10) unlock(Achievement.Play10)
+        if (state.tapCount >= 100) unlock(Achievement.Tap100)
+        if (state.feedCount >= 50) unlock(Achievement.Feed50)
+        if (state.playCount >= 50) unlock(Achievement.Play50)
+        if (state.restCount >= 25) unlock(Achievement.Rest25)
         if (state.stage == PetStage.Juvenile || state.stage == PetStage.Adult) {
             unlock(Achievement.ReachJuvenile)
         }
         if (state.stage == PetStage.Adult) unlock(Achievement.ReachAdult)
+        if (state.level >= 5) unlock(Achievement.Level5)
         if (state.level >= 10) unlock(Achievement.Level10)
+        if (state.level >= 15) unlock(Achievement.Level15)
         if (state.level >= 20) unlock(Achievement.Level20)
         if (state.level >= PetProgress.MAX_LEVEL) unlock(Achievement.MaxLevel)
         if (state.onboardingComplete && state.petName.isNotBlank()) {
             unlock(Achievement.NamedBuddy)
         }
+        if (state.careStreak >= 3) unlock(Achievement.Streak3)
+        if (state.careStreak >= 7) unlock(Achievement.Streak7)
+        if (state.careStreak >= 14) unlock(Achievement.Streak14)
+        if (state.dailyAllEverComplete || state.dailyState().allComplete) {
+            unlock(Achievement.DailyAll)
+        }
+        if (state.totalCareDays >= 10) unlock(Achievement.CareDay10)
         return if (mask != state.achievementsMask) state.copy(achievementsMask = mask) else state
     }
 
@@ -322,6 +407,10 @@ data class PetUiState(
     val feedCount: Int = 0,
     val playCount: Int = 0,
     val restCount: Int = 0,
+    val careStreak: Int = 0,
+    val totalCareDays: Int = 0,
+    val daily: DailyState = DailyState(),
+    val equipped: EquippedCosmetics = EquippedCosmetics(),
     val actionEpoch: Int = 0,
     val lastAction: PetAction = PetAction.Tap,
     val evolveEpoch: Int = 0,
@@ -331,7 +420,11 @@ data class PetUiState(
     val speechText: String? = null,
     val showSettings: Boolean = false,
     val showAchievements: Boolean = false,
+    val showUnlocks: Boolean = false,
+    val showDaily: Boolean = false,
     val newAchievement: Achievement? = null,
+    val careBurstEpoch: Int = 0,
+    val dailyAllEverComplete: Boolean = false,
     val ready: Boolean = false,
 ) {
     fun toPetState(now: Long = System.currentTimeMillis()) = PetState(
@@ -348,6 +441,16 @@ data class PetUiState(
         feedCount = feedCount,
         playCount = playCount,
         restCount = restCount,
+        dailyDayKey = daily.dayKey,
+        dailyEncoded = DailyChallengeEngine.encode(daily.challenges),
+        careStreak = careStreak,
+        lastCareDayKey = daily.lastCareDayKey,
+        totalCareDays = totalCareDays,
+        dailyAllEverComplete = dailyAllEverComplete || daily.allComplete,
+        equippedFrameId = equipped.frameId,
+        equippedEffectId = equipped.effectId,
+        equippedHeadId = equipped.headId,
+        equippedAccentId = equipped.accentId,
     )
 
     fun withTransient(prev: PetUiState) = copy(
@@ -360,7 +463,10 @@ data class PetUiState(
         speechText = prev.speechText,
         showSettings = prev.showSettings,
         showAchievements = prev.showAchievements,
+        showUnlocks = prev.showUnlocks,
+        showDaily = prev.showDaily,
         newAchievement = prev.newAchievement,
+        careBurstEpoch = prev.careBurstEpoch,
     )
 
     companion object {
@@ -369,6 +475,7 @@ data class PetUiState(
             val m = state.mood.toFloat()
             val e = state.energy.toFloat()
             val name = state.petName.ifBlank { "OctoBuddy" }
+            val daily = DailyChallengeEngine.ensureToday(state.dailyState())
             return PetUiState(
                 hunger = h,
                 mood = m,
@@ -388,6 +495,11 @@ data class PetUiState(
                 feedCount = state.feedCount,
                 playCount = state.playCount,
                 restCount = state.restCount,
+                careStreak = state.careStreak,
+                totalCareDays = state.totalCareDays,
+                daily = daily,
+                equipped = state.equipped(),
+                dailyAllEverComplete = state.dailyAllEverComplete || daily.allComplete,
                 ready = true,
             )
         }

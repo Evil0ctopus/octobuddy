@@ -29,12 +29,55 @@ data class PetState(
     val feedCount: Int = 0,
     val playCount: Int = 0,
     val restCount: Int = 0,
+    // v0.7 daily + streak
+    val dailyDayKey: String = "",
+    val dailyEncoded: String = "",
+    val careStreak: Int = 0,
+    val lastCareDayKey: String = "",
+    val totalCareDays: Int = 0,
+    val dailyAllEverComplete: Boolean = false,
+    // v0.7 cosmetics
+    val equippedFrameId: String = Cosmetic.FrameCyan.id,
+    val equippedEffectId: String = Cosmetic.EffectNone.id,
+    val equippedHeadId: String = Cosmetic.HeadNone.id,
+    val equippedAccentId: String = Cosmetic.AccentNone.id,
 ) {
     val level: Int get() = PetProgress.levelForXp(xp)
     val stage: PetStage get() = PetProgress.stageForXp(xp)
     val rankTitle: String get() = PetProgress.rankTitle(level)
     val careCounts: CareCounts
         get() = CareCounts(taps = tapCount, feeds = feedCount, plays = playCount, rests = restCount)
+
+    fun dailyState(): DailyState = DailyState(
+        dayKey = dailyDayKey,
+        challenges = DailyChallengeEngine.decode(dailyEncoded),
+        careStreak = careStreak,
+        lastCareDayKey = lastCareDayKey,
+        totalCareDays = totalCareDays,
+    )
+
+    fun equipped(): EquippedCosmetics = EquippedCosmetics(
+        frameId = equippedFrameId,
+        effectId = equippedEffectId,
+        headId = equippedHeadId,
+        accentId = equippedAccentId,
+    )
+
+    fun withDaily(d: DailyState): PetState = copy(
+        dailyDayKey = d.dayKey,
+        dailyEncoded = DailyChallengeEngine.encode(d.challenges),
+        careStreak = d.careStreak,
+        lastCareDayKey = d.lastCareDayKey,
+        totalCareDays = d.totalCareDays,
+        dailyAllEverComplete = dailyAllEverComplete || d.allComplete,
+    )
+
+    fun withEquipped(e: EquippedCosmetics): PetState = copy(
+        equippedFrameId = e.frameId,
+        equippedEffectId = e.effectId,
+        equippedHeadId = e.headId,
+        equippedAccentId = e.accentId,
+    )
 }
 
 class PetPreferences(private val context: Context) {
@@ -51,6 +94,16 @@ class PetPreferences(private val context: Context) {
     private val feedCountKey = intPreferencesKey("feed_count")
     private val playCountKey = intPreferencesKey("play_count")
     private val restCountKey = intPreferencesKey("rest_count")
+    private val dailyDayKey = stringPreferencesKey("daily_day_key")
+    private val dailyEncodedKey = stringPreferencesKey("daily_encoded")
+    private val careStreakKey = intPreferencesKey("care_streak")
+    private val lastCareDayKey = stringPreferencesKey("last_care_day_key")
+    private val totalCareDaysKey = intPreferencesKey("total_care_days")
+    private val dailyAllEverKey = booleanPreferencesKey("daily_all_ever")
+    private val frameKey = stringPreferencesKey("equip_frame")
+    private val effectKey = stringPreferencesKey("equip_effect")
+    private val headKey = stringPreferencesKey("equip_head")
+    private val accentKey = stringPreferencesKey("equip_accent")
 
     val petState: Flow<PetState> = context.petDataStore.data.map { prefs ->
         PetState(
@@ -67,6 +120,16 @@ class PetPreferences(private val context: Context) {
             feedCount = prefs[feedCountKey] ?: 0,
             playCount = prefs[playCountKey] ?: 0,
             restCount = prefs[restCountKey] ?: 0,
+            dailyDayKey = prefs[dailyDayKey] ?: "",
+            dailyEncoded = prefs[dailyEncodedKey] ?: "",
+            careStreak = prefs[careStreakKey] ?: 0,
+            lastCareDayKey = prefs[lastCareDayKey] ?: "",
+            totalCareDays = prefs[totalCareDaysKey] ?: 0,
+            dailyAllEverComplete = prefs[dailyAllEverKey] ?: false,
+            equippedFrameId = prefs[frameKey] ?: Cosmetic.FrameCyan.id,
+            equippedEffectId = prefs[effectKey] ?: Cosmetic.EffectNone.id,
+            equippedHeadId = prefs[headKey] ?: Cosmetic.HeadNone.id,
+            equippedAccentId = prefs[accentKey] ?: Cosmetic.AccentNone.id,
         )
     }
 
@@ -85,6 +148,16 @@ class PetPreferences(private val context: Context) {
             prefs[feedCountKey] = state.feedCount.coerceAtLeast(0)
             prefs[playCountKey] = state.playCount.coerceAtLeast(0)
             prefs[restCountKey] = state.restCount.coerceAtLeast(0)
+            prefs[dailyDayKey] = state.dailyDayKey
+            prefs[dailyEncodedKey] = state.dailyEncoded
+            prefs[careStreakKey] = state.careStreak.coerceAtLeast(0)
+            prefs[lastCareDayKey] = state.lastCareDayKey
+            prefs[totalCareDaysKey] = state.totalCareDays.coerceAtLeast(0)
+            prefs[dailyAllEverKey] = state.dailyAllEverComplete
+            prefs[frameKey] = state.equippedFrameId
+            prefs[effectKey] = state.equippedEffectId
+            prefs[headKey] = state.equippedHeadId
+            prefs[accentKey] = state.equippedAccentId
         }
     }
 
@@ -105,6 +178,16 @@ class PetPreferences(private val context: Context) {
             prefs[feedCountKey] = 0
             prefs[playCountKey] = 0
             prefs[restCountKey] = 0
+            prefs[dailyDayKey] = ""
+            prefs[dailyEncodedKey] = ""
+            prefs[careStreakKey] = 0
+            prefs[lastCareDayKey] = ""
+            prefs[totalCareDaysKey] = 0
+            prefs[dailyAllEverKey] = false
+            prefs[frameKey] = Cosmetic.FrameCyan.id
+            prefs[effectKey] = Cosmetic.EffectNone.id
+            prefs[headKey] = Cosmetic.HeadNone.id
+            prefs[accentKey] = Cosmetic.AccentNone.id
         }
     }
 }

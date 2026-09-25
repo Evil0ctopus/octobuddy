@@ -25,9 +25,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,8 +69,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.evil0ctopus.octobuddy.R
 import com.evil0ctopus.octobuddy.data.Achievement
+import com.evil0ctopus.octobuddy.data.Cosmetic
+import com.evil0ctopus.octobuddy.data.CosmeticSlot
+import com.evil0ctopus.octobuddy.data.DailyChallenge
+import com.evil0ctopus.octobuddy.data.EquippedCosmetics
 import com.evil0ctopus.octobuddy.data.PetProgress
-import com.evil0ctopus.octobuddy.data.PetStage
 import com.evil0ctopus.octobuddy.ui.theme.Brand
 import kotlinx.coroutines.delay
 
@@ -145,6 +151,10 @@ fun PetScreen(viewModel: PetViewModel) {
     Box(modifier = Modifier.fillMaxSize()) {
         InteractiveCyberOceanBackground(
             modifier = Modifier.fillMaxSize(),
+            mood = state.mood,
+            energy = state.energy,
+            careBurstEpoch = state.careBurstEpoch,
+            lastAction = state.lastAction,
             onBackgroundTap = { maybeHaptic(false) },
         )
 
@@ -153,16 +163,22 @@ fun PetScreen(viewModel: PetViewModel) {
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Header: name · rank · glossy XP (PorkChop HUD)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    IconButton(onClick = { viewModel.openDaily() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Today,
+                            contentDescription = stringResource(R.string.daily_challenges),
+                            tint = Brand.Cyan,
+                        )
+                    }
                     IconButton(onClick = { viewModel.openAchievements() }) {
                         Icon(
                             imageVector = Icons.Filled.EmojiEvents,
@@ -192,6 +208,13 @@ fun PetScreen(viewModel: PetViewModel) {
                             )
                         }
                     }
+                    IconButton(onClick = { viewModel.openUnlocks() }) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = stringResource(R.string.unlocks),
+                            tint = Brand.CopperBright,
+                        )
+                    }
                     IconButton(onClick = { viewModel.openSettings() }) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
@@ -212,6 +235,8 @@ fun PetScreen(viewModel: PetViewModel) {
                     color = Brand.CyanSoft,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                StreakChip(streak = state.careStreak, dailyDone = state.daily.completedCount, dailyTotal = state.daily.challenges.size)
                 Spacer(modifier = Modifier.height(6.dp))
                 GlossyXpBar(
                     progress = state.xpProgress,
@@ -234,7 +259,6 @@ fun PetScreen(viewModel: PetViewModel) {
                 )
             }
 
-            // Pet stage + speech bubble
             Box(
                 contentAlignment = Alignment.TopCenter,
                 modifier = Modifier.fillMaxWidth(),
@@ -244,6 +268,10 @@ fun PetScreen(viewModel: PetViewModel) {
                     actionEpoch = state.actionEpoch,
                     lastAction = state.lastAction,
                     evolveEpoch = state.evolveEpoch,
+                    hunger = state.hunger,
+                    mood = state.mood,
+                    energy = state.energy,
+                    equipped = state.equipped,
                     onTap = {
                         maybeHaptic(false)
                         viewModel.tapPet()
@@ -258,7 +286,6 @@ fun PetScreen(viewModel: PetViewModel) {
                 )
             }
 
-            // Care panel
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -328,8 +355,24 @@ fun PetScreen(viewModel: PetViewModel) {
                 onClose = { viewModel.closeAchievements() },
             )
         }
+        if (state.showDaily) {
+            DailySheet(
+                challenges = state.daily.challenges,
+                streak = state.careStreak,
+                onClose = { viewModel.closeDaily() },
+            )
+        }
+        if (state.showUnlocks) {
+            UnlocksSheet(
+                mask = state.achievementsMask,
+                level = state.level,
+                streak = state.careStreak,
+                equipped = state.equipped,
+                onEquip = { viewModel.equipCosmetic(it) },
+                onClose = { viewModel.closeUnlocks() },
+            )
+        }
 
-        // Level-up fanfare (PorkChop)
         AnimatedVisibility(
             visible = state.leveledTo != null && state.evolvedToStage == null,
             enter = fadeIn() + scaleIn(initialScale = 0.85f),
@@ -350,7 +393,6 @@ fun PetScreen(viewModel: PetViewModel) {
             }
         }
 
-        // Stage evolve celebration
         AnimatedVisibility(
             visible = state.evolvedToStage != null,
             enter = fadeIn() + scaleIn(initialScale = 0.85f),
@@ -369,7 +411,6 @@ fun PetScreen(viewModel: PetViewModel) {
             }
         }
 
-        // Achievement toast
         AnimatedVisibility(
             visible = state.newAchievement != null,
             enter = fadeIn() + scaleIn(),
@@ -398,6 +439,43 @@ fun PetScreen(viewModel: PetViewModel) {
 }
 
 @Composable
+private fun StreakChip(streak: Int, dailyDone: Int, dailyTotal: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Brand.NavyDeep.copy(alpha = 0.75f))
+                .border(1.dp, Brand.Copper.copy(alpha = 0.5f), RoundedCornerShape(50))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.LocalFireDepartment,
+                contentDescription = null,
+                tint = if (streak > 0) Brand.CopperBright else Brand.FoamDim,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = stringResource(R.string.streak_label, streak),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (streak > 0) Brand.CopperBright else Brand.FoamDim,
+            )
+        }
+        if (dailyTotal > 0) {
+            Text(
+                text = stringResource(R.string.daily_progress_chip, dailyDone, dailyTotal),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (dailyDone >= dailyTotal) Brand.Ok else Brand.CyanSoft,
+            )
+        }
+    }
+}
+
+@Composable
 private fun GlossyXpBar(progress: Float, caption: String) {
     val p = progress.coerceIn(0f, 1f)
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -420,7 +498,6 @@ private fun GlossyXpBar(progress: Float, caption: String) {
                         ),
                     ),
             )
-            // Gloss highlight strip
             Box(
                 modifier = Modifier
                     .fillMaxWidth(p)
@@ -660,7 +737,7 @@ private fun AchievementsSheet(mask: Long, onClose: () -> Unit) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(420.dp)
+                .height(460.dp)
                 .clickable(enabled = false) {},
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             colors = CardDefaults.cardColors(containerColor = Brand.NavyCard),
@@ -696,6 +773,203 @@ private fun AchievementsSheet(mask: Long, onClose: () -> Unit) {
                                     style = MaterialTheme.typography.titleMedium,
                                 )
                                 Text(a.description, color = Brand.FoamDim, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+                TextButton(onClick = onClose, modifier = Modifier.align(Alignment.End)) {
+                    Text(stringResource(R.string.settings_close))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailySheet(
+    challenges: List<DailyChallenge>,
+    streak: Int,
+    onClose: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brand.NavyDeep.copy(alpha = 0.65f))
+            .clickable(onClick = onClose),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(420.dp)
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            colors = CardDefaults.cardColors(containerColor = Brand.NavyCard),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .padding(20.dp),
+            ) {
+                Text(
+                    stringResource(R.string.daily_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Brand.Cyan,
+                )
+                Text(
+                    stringResource(R.string.streak_detail, streak),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Brand.CopperBright,
+                )
+                Spacer(Modifier.height(12.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+                    items(challenges) { ch ->
+                        DailyChallengeRow(ch)
+                    }
+                }
+                TextButton(onClick = onClose, modifier = Modifier.align(Alignment.End)) {
+                    Text(stringResource(R.string.settings_close))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyChallengeRow(ch: DailyChallenge) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (ch.complete) Brand.Ok.copy(alpha = 0.12f)
+                else Brand.NavyDeep.copy(alpha = 0.45f),
+            )
+            .padding(12.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                if (ch.complete) "✓ ${ch.title}" else ch.title,
+                color = if (ch.complete) Brand.Ok else Brand.Foam,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                "${ch.progress}/${ch.target}",
+                color = Brand.FoamDim,
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        Text(ch.description, color = Brand.FoamDim, style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Brand.NavyDeep),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(ch.fraction)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (ch.complete) Brand.Ok else Brand.Cyan),
+            )
+        }
+    }
+}
+
+@Composable
+private fun UnlocksSheet(
+    mask: Long,
+    level: Int,
+    streak: Int,
+    equipped: EquippedCosmetics,
+    onEquip: (Cosmetic) -> Unit,
+    onClose: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brand.NavyDeep.copy(alpha = 0.65f))
+            .clickable(onClick = onClose),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(500.dp)
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            colors = CardDefaults.cardColors(containerColor = Brand.NavyCard),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .padding(20.dp),
+            ) {
+                Text(
+                    stringResource(R.string.unlocks_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Brand.CopperBright,
+                )
+                Text(
+                    stringResource(R.string.unlocks_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Brand.FoamDim,
+                )
+                Spacer(Modifier.height(10.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
+                    items(CosmeticSlot.entries.toList()) { slot ->
+                        Text(
+                            slot.name,
+                            color = Brand.Cyan,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Cosmetic.forSlot(slot).forEach { c ->
+                            val unlocked = c.isUnlocked(mask, level, streak)
+                            val selected = when (slot) {
+                                CosmeticSlot.Frame -> equipped.frameId == c.id
+                                CosmeticSlot.Effect -> equipped.effectId == c.id
+                                CosmeticSlot.Head -> equipped.headId == c.id
+                                CosmeticSlot.Accent -> equipped.accentId == c.id
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        when {
+                                            selected -> Brand.Cyan.copy(alpha = 0.18f)
+                                            unlocked -> Brand.NavyDeep.copy(alpha = 0.5f)
+                                            else -> Brand.NavyDeep.copy(alpha = 0.3f)
+                                        },
+                                    )
+                                    .clickable(enabled = unlocked) { onEquip(c) }
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    when {
+                                        selected -> "★"
+                                        unlocked -> "◇"
+                                        else -> "🔒"
+                                    },
+                                    modifier = Modifier.width(28.dp),
+                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        c.title,
+                                        color = if (unlocked) Brand.Foam else Brand.FoamDim,
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(c.description, color = Brand.FoamDim, style = MaterialTheme.typography.bodySmall)
+                                }
+                                if (selected) {
+                                    Text("ON", color = Brand.Cyan, style = MaterialTheme.typography.labelLarge)
+                                }
                             }
                         }
                     }
