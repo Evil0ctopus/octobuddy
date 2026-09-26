@@ -70,7 +70,7 @@ Application id: `com.evil0ctopus.octobuddy` · **0.8.1** (versionCode 10)
 
 ## Design notes
 
-UX/game shell patterns inspired by [PorkChop](https://github.com/0ct0sec/M5PORKCHOP) / [Porkchop-cyd-Port](https://github.com/Xombi3/Porkchop-cyd-Port) and Josh’s [Pocket-Pirate-CYD](https://github.com/Evil0ctopus/Pocket-Pirate-CYD) (speech bubbles, ranks, XP bar, fanfare, challenge energy) — **companion systems only**, not WiFi/attack tooling.
+UX/game shell patterns inspired by [PorkChop](https://github.com/0ct0sec/M5PORKCHOP) / [Porkchop-cyd-Port](https://github.com/Xombi3/Porkchop-cyd-Port) and [Pocket-Pirate-CYD](https://github.com/Evil0ctopus/Pocket-Pirate-CYD) (speech bubbles, ranks, XP bar, fanfare, challenge energy) — **companion systems only**, not WiFi/attack tooling.
 
 ## Art
 
